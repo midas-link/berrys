@@ -1,0 +1,1 @@
+import{t as a,a as e}from"../chunks/dn5T25_G.js";import"../chunks/BrwEUfhY.js";import{n as r}from"../chunks/m7Aisenh.js";var m=a('<!DOCTYPE html=""> <html><head></head> <body><h1>This Page is under construction.</h1></body></html>',1);function i(t){var o=m();r(2),e(t,o)}export{i as component};
