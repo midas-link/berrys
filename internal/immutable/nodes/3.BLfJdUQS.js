@@ -1,0 +1,1 @@
+import{t as o,a}from"../chunks/BwztU-1H.js";import"../chunks/D2pFnvA9.js";const l=Object.freeze(Object.defineProperty({__proto__:null},Symbol.toStringTag,{value:"Module"}));var r=o("<html><head></head> <body><h1>This Page is under construction.</h1></body></html>");function i(e){var t=r();a(e,t)}export{i as component,l as universal};
