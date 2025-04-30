@@ -1,0 +1,1 @@
+import{t as a,a as o}from"../chunks/BwztU-1H.js";import"../chunks/D2pFnvA9.js";import{c as p,r as m}from"../chunks/Q_JE9wk7.js";import{s as i}from"../chunks/D-A7z8Ve.js";import{b as s}from"../chunks/CcTokVOa.js";var c=a("<p><a>click here to get redirected to the login page</a></p>");function l(e){var t=c(),r=p(t);i(r,"href",`${s??""}/home`),m(t),o(e,t)}export{l as component};
