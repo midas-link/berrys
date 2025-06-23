@@ -6,27 +6,83 @@
     import { page } from '$app/stores';
     import { get } from 'svelte/store';
     import DropdownField from "./DropdownField.svelte";
+    import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+    let allEvents = []; 
+    let filteredEvents = [];
+    let eventsLoading = true;
+    let eventsError = null;
     let uniqueStates;
     let uniqueCities;
+    let uniqueZips;
     const currentPath = get(page).url.pathname;
     let mobileSearchVisible = false;
     function openDetails(row) {
-    goto(`${base}/deliveryDetail/${row.zip}`, {
+    goto(`${base}/deliveryDetail/${row.Zip}`, {
       state: {
         from: currentPath,
-        address: row.address,
-        city: row.city,
-        state: row.state,
+        address: row.Address,
+        city: row.City,
+        state: row.State,
         date: row.date,
         time: row.time,
-        siteCode : row.zip
+        siteCode : row.Zip
       }
     });
+  }
+  async function fetchEventsData() {
+      try {
+          eventsLoading = true;
+          eventsError = null;
+          console.log('Fetching prevented delivery events from API...');
+          const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Cross_Drops`);
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log('Prevented Delivery Events Data Loaded:', data);
+
+          allEvents = data;
+          filteredEvents = [...allEvents];
+
+          // Extract unique states and cities
+          uniqueStates = [...new Set(allEvents.map(row => row.State).filter(s => s && s.trim() !== ''))];
+          uniqueCities = [...new Set(allEvents.map(row => row.City).filter(c => c && c.trim() !== ''))];
+
+
+          detailsVisible = Array(filteredEvents.length).fill(false);
+          toggleLiveStatus(true); // Force show live status after initial load
+
+      } catch (error) {
+          console.error("Error fetching prevented delivery events:", error);
+          eventsError = "Failed to load prevented delivery events data. Please try again.";
+      } finally {
+          eventsLoading = false;
+      }
+  }
+    // --- Formatting and Utility Functions ---
+    function formatEpochToDisplay(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString('en-GB', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+      }).replace(/\//g, '.');
+  }
+
+  function formatEpochToTime(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+      });
   }
   function formatSearchedDate(searchedDate){
     if(!searchedDate) return "";
     const date = new Date(searchedDate);
-    const formattedDate = date.toLocaleDateString('en-US', {
+    const formattedDate = date.toLocaleDateString('en-GB', {
       month: '2-digit',
       day: '2-digit',
       year:'numeric'
@@ -75,30 +131,30 @@
         return index % 2 === 0 ? 'row-even' : 'row-odd';
     }
     function filterRows() {
-        filteredRows = rows.filter(row => {
+      filteredEvents = allEvents.filter(row => {
             // Check each search parameter
             const addressMatch = !searchParams.address || 
-                (row.address && row.address.toLowerCase().includes(searchParams.address.toLowerCase()));
+                (row.Address && row.Address.toLowerCase().includes(searchParams.address.toLowerCase()));
             
             const stateMatch = !searchParams.state || 
-                (row.state && row.state.toLowerCase().includes(searchParams.state.toLowerCase()));
+                (row.State && row.State.toLowerCase().includes(searchParams.state.toLowerCase()));
             
             const cityMatch = !searchParams.city || 
-                (row.city && row.city.toLowerCase().includes(searchParams.city.toLowerCase()));
+                (row.City && row.City.toLowerCase().includes(searchParams.city.toLowerCase()));
             
             const zipMatch = !searchParams.zip || 
-                (row.zip && row.zip.toString().includes(searchParams.zip));
-            
+                (row.Zip && row.Zip.toString().includes(searchParams.zip));
+            const eventDateStr = row.event_timestamp ? new Date(row.event_timestamp * 1000).toISOString().split('T')[0] : '';
             const dateMatch = !searchParams.date || 
-                (row.date && row.date.includes(formatSearchedDate(searchParams.date)));
+                (eventDateStr && eventDateStr.includes(formatSearchedDate(searchParams.date)));
             
             const fuelMatch = !searchParams.fuel || 
-                (row.preventedDelivery && row.preventedDelivery.toLowerCase().includes(searchParams.fuel.toLowerCase()));
+                (row["Prevented Delivery "] && row["Prevented Delivery "].toLowerCase().includes(searchParams.fuel.toLowerCase()));
             
             return addressMatch && stateMatch && cityMatch && zipMatch && dateMatch && fuelMatch;
         });
         
-        detailsVisible = Array(filteredRows.length).fill(false);
+        detailsVisible = Array(filteredEvents.length).fill(false);
         
         toggleLiveStatus();
     }
@@ -114,10 +170,10 @@
         };
         
         // Reset filtered rows to all rows
-        filteredRows = [...rows];
+        filteredEvents = [...allEvents];
         
         // Reset details visibility
-        detailsVisible = Array(filteredRows.length).fill(false);
+        detailsVisible = Array(filteredEvents.length).fill(false);
         
         // Force show live status
         toggleLiveStatus(true);
@@ -125,7 +181,7 @@
     function formatDate(dateString) {
     if (!dateString) return '';
     
-    const [month, day, year] = dateString.split('.');
+    const [day, month, year] = dateString.split('.');
     
     const date = new Date(year, month - 1, day);
     
@@ -402,12 +458,8 @@ function closeDropdown(event) {
     setupMobileMenu();
     updateDateTime();
     crossdrop.disableBrowserAutocomplete();
-    rows = await crossdrop.fetchPreventions()
-    filteredRows = [...rows];
-    detailsVisible = Array(rows.length).fill(false);
-    uniqueStates = [...new Set(rows.map(row => row.state).filter(state => state && state.trim() !== ''))];
-    uniqueCities = [...new Set(rows.map(row => row.city).filter(state => state && state.trim() !== ''))];
-    crossdrop.disableBrowserAutocomplete();
+    await fetchEventsData();
+   
     const interval =  setInterval(updateDateTime,1000);
     window.addEventListener('click',closeDropdown);
     return () => {
@@ -539,29 +591,33 @@ function closeDropdown(event) {
                 </tr>
               </thead>
               <tbody>
-                {#if filteredRows.length > 0}
-                  {#each filteredRows as row, index}              
+                {#if eventsLoading}
+                      <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading events...</td></tr>
+                  {:else if eventsError}
+                      <tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">{eventsError}</td></tr>
+                {:else if filteredEvents.length > 0}
+                  {#each filteredEvents as row, index}              
                     <tr 
                       class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" 
                       on:click={() => toggleDetails(index)}
                     >
-                      <td>{formatDate(row.date)}</td>
-                      <td>{row.time}</td>
-                      <td>{row.zip}</td>
-                      <td>{row.preventedDelivery}</td>
+                      <td>{formatDate(formatEpochToDisplay(row.event_timestamp))}</td>
+                      <td>{formatEpochToTime(row.event_timestamp)}</td>
+                      <td>{row.Zip}</td>
+                      <td>{row["Prevented Delivery "]}</td>
                     </tr>
                     {#if detailsVisible[index]}
                       <tr class="details-row {getRowClass(index)}" on:click={() => toggleDetails(index)}>    
                         <td colspan="4" class="details-cell">
                           <div class="details-header">Details:</div>
                           <div class="details-content">
-                            {row.date} | {row.time || ''} 
+                            {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp) || ''} 
                             <br>
-                            <span class="label">Full Address:</span> {row.address || ''}, {row.city || ''} {row.state || ''} | {row.zip || ''}
+                            <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''} | {row.Zip || ''}
                             <br>
-                            <span class="label">Tank Grade:</span> {row.tankGrade || ''} | <span class="label">Tank No.:</span> {row.tankNo || ''}
+                            <span class="label">Tank Grade:</span> {row["Delivered"] || ''} | <span class="label">Tank No.:</span> {row.tankNo || ''}
                             <br>
-                            <span class="label">Fuel Prevented:</span> {row.preventedDelivery || ''}
+                            <span class="label">Fuel Prevented:</span> {row["Prevented Delivery "] || ''}
                           </div>
                         </td>
                         <td>
@@ -581,17 +637,21 @@ function closeDropdown(event) {
             </table>
           
             <div class="mobile-card-view">
-              {#if filteredRows.length > 0}
-                {#each filteredRows as row, index}
+              {#if eventsLoading}
+                  <div class="loading-message" style="text-align: center;">Loading events...</div>
+              {:else if eventsError}
+                  <div class="error-message" style="text-align: center;">{eventsError}</div>
+              {:else if filteredEvents.length > 0}
+                {#each filteredEvents as row, index}
                   <div class="card {getRowClass(index)}" on:click={() => toggleDetails(index)}>
                     <div class="card-header">
                       <div class="card-item">
-                        <span class="card-label"> {formatDate(row.date) === 'Just now' ? 'Just now' : `${formatDate(row.date)} ${row.time}`}</span>
+                        <span class="card-label"> {formatDate(formatEpochToDisplay(row.event_timestamp))}</span>
                     </div>
                       <div class="card-item">
                         <span class="card-value">Tank: T{row.tankNo }</span> 
-                        <span class="card-value" style="margin-left: 2vw;">Fuel: {row.preventedDelivery}</span> 
-                        <span class="card-value" style="margin-left: 2vw;">Zip: {row.zip}</span>
+                        <span class="card-value" style="margin-left: 2vw;">Fuel: {row["Prevented Delivery "]}</span> 
+                        <span class="card-value" style="margin-left: 2vw;">Zip: {row.Zip}</span>
                         <span class="card-value" style="position: relative;margin-left:auto"> {detailsVisible[index] ? '▲' : '▼'}</span>
                     </div>
                     </div>
@@ -602,16 +662,16 @@ function closeDropdown(event) {
                         <div class="details-header">Details:</div>
                         <div class="details-content">
                           <div class="detail-row">
-                            {row.date} | {row.time || ''} 
+                            {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp) || ''} 
                           </div>
                           <div class="detail-row">
-                            <span class="label">Full Address:</span> {row.address || ''}, {row.city || ''} {row.state || ''} | {row.zip || ''}
+                            <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''} | {row.Zip || ''}
                           </div>
                           <div class="detail-row">
-                            <span class="label">Tank Grade:</span> {row.tankGrade || ''} |  <span class="label">Tank No:</span> {row.tankNo || ''}  
+                            <span class="label">Tank Grade:</span> {row["Delivered"] || ''} |  <span class="label">Tank No:</span> {row.tankNo || ''}  
                           </div>
                           <div class="detail-row">
-                            <span class="label"> Fuel Prevented:</span>  {row.preventedDelivery}
+                            <span class="label"> Fuel Prevented:</span>  {row["Prevented Delivery "]}
                           </div>
                           <button on:click={() => openDetails(row)} class="more-details mobile-details-btn">
                             See Delivery Details
@@ -732,6 +792,7 @@ function closeDropdown(event) {
     margin-bottom: 15px;
     padding: 15px;
     transition: all 0.3s ease;
+    min-height:10vh;
   }
   
   .card.row-even {

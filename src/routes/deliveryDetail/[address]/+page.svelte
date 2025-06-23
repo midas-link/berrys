@@ -5,7 +5,7 @@
     import { goto } from "$app/navigation";
     import { get } from 'svelte/store';
     const currentPath = get(page).url.pathname;
-
+    import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
     // Function to save state to localStorage
     function saveStateToSession() {
         const state = {

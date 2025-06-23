@@ -5,6 +5,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
+  import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
   const currentPath = get(page).url.pathname;
   function openDetails(row) {
     goto(`${base}/deliveryDetail/${row.SiteCode}`, {
@@ -32,6 +33,10 @@
     date:'',
     fuel:''
   };
+  let allEvents = []; 
+  let filteredEvents = [];
+  let eventsLoading = true;
+  let eventsError = null;
   let uniqueCities = [];
   let uniqueBusinessUnits = [];
   let uniqueStates = [];
@@ -53,6 +58,53 @@
     console.log(formattedDate);
     return formattedDate;
   }
+  function formatEpochToDisplay(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString('en-GB', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+      }).replace(/\//g, '.');
+  }
+  function formatEpochToTime(isoString) {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+  async function fetchEventsData() {
+      try {
+          eventsLoading = true;
+          eventsError = null;
+          console.log('Fetching prevented delivery events from API...');
+          const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Site_Data`);
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log('Prevented Delivery Events Data Loaded:', data);
+
+          allEvents = data;
+          filteredEvents = [...allEvents];
+
+          // Extract unique states and cities
+          uniqueStates = [...new Set(allEvents.map(row => row.State).filter(s => s && s.trim() !== ''))];
+          uniqueCities = [...new Set(allEvents.map(row => row.City).filter(c => c && c.trim() !== ''))];
+          uniqueBusinessUnits = [...new Set(allEvents.map(row => row.BusinessUnitName).filter(b => b&& b.trim() !== ''))];
+          uniqueSites = [...new Set(allEvents.map(row => row.SiteCode).filter(s => s&& s.trim() !== ''))];
+          detailsVisible = Array(filteredEvents.length).fill(false);
+          toggleLiveStatus(true); // Force show live status after initial load
+
+      } catch (error) {
+          console.error("Error fetching prevented delivery events:", error);
+          eventsError = "Failed to load prevented delivery events data. Please try again.";
+      } finally {
+          eventsLoading = false;
+      }
+  } 
   function getRowClass(index) {
     return index % 2 === 0 ? 'row-even' : 'row-odd';
 }
@@ -62,7 +114,7 @@ function toggleMobileSearch() {
 function filterRows() {
     // Get values directly from searchParams which are bound to the inputs
     
-    filteredRows = rows.filter(row => {
+    filteredEvents = allEvents.filter((row) => {
       // Check each search parameter
       const businessUnitMatch = !searchParams.businessUnit || 
           (row.BusinessUnitName && row.BusinessUnitName.toLowerCase().includes(searchParams.businessUnit.toLowerCase()));
@@ -92,7 +144,7 @@ function filterRows() {
     });
     
     // Reset details visibility array
-    detailsVisible = Array(filteredRows.length).fill(false);
+    detailsVisible = Array(filteredEvents.length).fill(false);
     
     // Update live status display
     toggleLiveStatus();
@@ -111,10 +163,10 @@ function clearSearch() {
     };
     
     // Reset filtered rows to all rows
-    filteredRows = [...rows];
+    filteredEvents = [...allEvents];
     
     // Reset details visibility
-    detailsVisible = Array(filteredRows.length).fill(false);
+    detailsVisible = Array(filteredEvents.length).fill(false);
     
     // Force show live status
     toggleLiveStatus(true);
@@ -123,7 +175,7 @@ function clearSearch() {
     if (!dateString) return '';
     
     // Split the date string into day, month, year
-    const [day, month, year] = dateString.split('/');
+    const [day, month, year] = dateString.split('.');
     
     // Create a new date object (month is 0-based in JavaScript)
     const date = new Date(year, month - 1, day);
@@ -247,23 +299,8 @@ function toggleDetails(index) {
     setupMobileMenu();
     updateDateTime();
     siteDataFuncs.disableBrowserAutocomplete();
-    console.log("Starting data fetch");
-    try {
-        const result = await siteDataFuncs.fetchSiteData();
-        console.log("Data fetched:", result);
-        rows = result;
-        filteredRows = [...rows];
-        detailsVisible = Array(rows.length).fill(false);
-        
-        // Extract unique values for dropdowns
-        uniqueBusinessUnits = [...new Set(rows.map(row => row.BusinessUnitName).filter(bu => bu && bu.trim() !== ''))];
-        uniqueCities = [...new Set(rows.map(row => row.City).filter(city => city && city.trim() !== ''))];
-        uniqueStates = [...new Set(rows.map(row => row.State).filter(state => state && state.trim() !== ''))];
-        uniqueSites = [...new Set(rows.map(row => row.SiteCode).filter(site => site && site.trim() !== ''))];
-        
-    } catch (error) {
-        console.error("Failed to load data:", error);
-    }
+    await fetchEventsData();
+   
     
     const interval = setInterval(updateDateTime, 1000);
     
@@ -634,14 +671,18 @@ async function exportTableToPDF() {
                 </tr>
               </thead>
               <tbody>
-                {#if filteredRows.length > 0}
-                  {#each filteredRows as row, index}              
+                {#if eventsLoading}
+                <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading events...</td></tr>
+                {:else if eventsError}
+                <tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">{eventsError}</td></tr>
+                {:else if filteredEvents.length > 0}
+                  {#each filteredEvents as row, index}              
                     <tr 
                       class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" 
                       on:click={() => toggleDetails(index)}
                     >
-                    <td>{formatDate(row.Date)}</td>
-                    <td>{row['Delivery End']}</td>
+                    <td>{formatDate(formatEpochToDisplay(row.event_timestamp))}</td>
+                    <td>{formatEpochToTime(row['Delivery End'])}</td>
                     <td>{row.SiteCode}</td>
                     <td>{row.Delivered}</td>
                     </tr>
@@ -650,13 +691,13 @@ async function exportTableToPDF() {
                         <td colspan="4" class="details-cell">
                           <div class="details-header">Details:</div>
                           <div class="details-content">
-                            {row.Date} | {row['Delivery Start '] || ''}  to {row['Delivery End'] || ''}
+                            {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row['Delivery Start']) || ''}  to {formatEpochToTime(row['Delivery End']) || ''}
                             <br>
                             <span class="label">Site code:</span> {row.SiteCode || ''} | <span class="label">Business Unit:</span> {row.BusinessUnitName || ''}
                             <br>
                             <span class="label">Full Address:</span> {row.Address || ''} , {row.City} {row.State} | {row.Zip}
                             <br>
-                            <span class="label">Fuel dropped:</span> {row.Delivered || ''} | <span class="label">Tank:</span> T{row.TankNumber || ''}
+                            <span class="label">Fuel dropped:</span> {row.Delivered || ''} | <span class="label">Tank:</span> T{row.tank_number || ''}
                         </div>
                         </td>
                         <td>
@@ -676,12 +717,16 @@ async function exportTableToPDF() {
             </table>
           
             <div class="mobile-card-view">
-              {#if filteredRows.length > 0}
-                {#each filteredRows as row, index}
+              {#if eventsLoading}
+              <div class="loading-message" style="text-align: center;">Loading events...</div>
+              {:else if eventsError}
+                  <div class="error-message" style="text-align: center;">{eventsError}</div>
+              {:else if filteredEvents.length > 0}
+                {#each filteredEvents as row, index}
                   <div class="card {getRowClass(index)}" on:click={() => toggleDetails(index)}>
                     <div class="card-header">
                       <div class="card-item">
-                        <span class="card-label"> {formatDate(row.Date) === 'Just now' ? 'Just now' : `${formatDate(row.Date)} `}</span>
+                        <span class="card-label"> {formatDate(formatEpochToDisplay(row.event_timestamp)) === 'Just now' ? 'Just now' : `${formatDate(formatEpochToDisplay(row.event_timestamp))} `}</span>
                     </div>
                       <div class="card-item">
                         <span class="card-value" style="margin-left: 2vw;">Fuel: {row.Delivered}</span> 
@@ -696,7 +741,7 @@ async function exportTableToPDF() {
                         <div class="details-header">Details:</div>
                         <div class="details-content">
                           <div class="detail-row">
-                            {row.Date} | {row['Delivery Start '] || ''}  to {row['Delivery End'] || ''}
+                            {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row['Delivery Start']) || ''}  to {formatEpochToTime(row['Delivery End']) || ''}
                           </div>
                           <div class="detail-row">
                             <span class="label">Site Code:</span> {row.SiteCode} |  <span class="label">Business Unit:</span> {row.BusinessUnitName || ''}
@@ -705,7 +750,7 @@ async function exportTableToPDF() {
                             <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''} | {row.Zip || ''}
                           </div>
                           <div class="detail-row">
-                            <span class="label">Fuel Dropped:</span> {row.Delivered} | <span class="label">Tank:</span> T{row.TankNumber}
+                            <span class="label">Fuel Dropped:</span> {row.Delivered} | <span class="label">Tank:</span> T{row.tank_number}
                           </div>
                           <button on:click={() => openDetails(row)} class="more-details mobile-details-btn">
                             See Delivery Details
@@ -762,6 +807,7 @@ async function exportTableToPDF() {
     margin-bottom: 15px;
     padding: 15px;
     transition: all 0.3s ease;
+    min-height:10vh;
   }
   
   .card.row-even {

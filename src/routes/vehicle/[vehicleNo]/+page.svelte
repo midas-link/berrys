@@ -1,883 +1,546 @@
 <script>
-    import { onMount } from "svelte";
-    import { base } from '$app/paths';
-    import { page } from '$app/stores';
-    import { goto } from "$app/navigation";
-    import { get } from 'svelte/store';
-    $: trailer = $page.state?.trailer;
-    $: previousURL = $page.state?.from;
-    const currentPath = get(page).url.pathname;
-    let searchBy = "day";
-    function openDetails(event) {
-    goto(`${base}/deliveryDetail/${event.Zip}`, {
-      state: {
-        from: currentPath,
-        address: event.Address,
-        city: event.City,
-        state: event.State,
-        date: event.Date,
-        time: event.Time,
-        siteCode : event.Zip
-      }
-    });
+  import { onMount } from "svelte";
+  import { base } from '$app/paths';
+  import { page } from '$app/stores';
+  import { goto } from "$app/navigation";
+  import { get } from 'svelte/store';
+  import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+ 
+  export let data; 
+  $: trailer = data.trailerNumber || $page.state?.trailer; 
+
+  $: previousURL = $page.state?.from;
+  const currentPath = get(page).url.pathname;
+
+
+  let allTimelineEvents = []; 
+  let timelineLoading = true;
+  let timelineError = null;
+  let displayedTimelineEvents = [];
+  let activeView = "monthly"; 
+  let currentDisplayDate = new Date(); 
+  let isSidebarActive = false;
+  let searchBy = "day";
+  const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
+  const monthOptions = [
+      { value: 1, label: "January" }, { value: 2, label: "February" }, { value: 3, label: "March" },
+      { value: 4, label: "April" }, { value: 5, label: "May" }, { value: 6, label: "June" },
+      { value: 7, label: "July" }, { value: 8, label: "August" }, { value: 9, label: "September" },
+      { value: 10, label: "October" }, { value: 11, label: "November" }, { value: 12, label: "December" }
+  ];
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 51 }, (_, i) => currentYear - i);
+  let selectedValue = ""; 
+
+  $: if (searchBy) {
+      selectedValue = "";
   }
-    const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
-    const monthOptions = [
-        { value: 1, label: "January" },
-        { value: 2, label: "February" },
-        { value: 3, label: "March" },
-        { value: 4, label: "April" },
-        { value: 5, label: "May" },
-        { value: 6, label: "June" },
-        { value: 7, label: "July" },
-        { value: 8, label: "August" },
-        { value: 9, label: "September" },
-        { value: 10, label: "October" },
-        { value: 11, label: "November" },
-        { value: 12, label: "December" }
-    ];
+  function formatEpochToTime(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+      });
+  }
+  function openDetails(event) {
+      goto(`${base}/deliveryDetail/${event.Zip}`, { 
+          state: {
+              from: currentPath,
+              address: event.Address,
+              city: event.City,
+              state: event.State,
+              date: event.event_timestamp, 
+              time: event.event_timestamp, 
+              siteCode : event.Zip 
+          }
+      });
+  }
 
-    let isSidebarActive = false;
-
-    function gotoVehicle(vehicleNum) {
+  function gotoVehicle(vehicleNum) {
       goto(`${base}/vehicle/${vehicleNum}`, {
-        state: {
-          trailer: vehicleNum,
-        },
+          state: {
+              trailer: vehicleNum,
+          },
       });
-    }
-    const currentYear = new Date().getFullYear();
-    const yearOptions = Array.from({ length: 51 }, (_, i) => currentYear - i);
-    
-    // Variable to store the selected value
-    let selectedValue = "";
-    
-    $: if (searchBy) {
-        selectedValue = "";
-    }
-  
-    let allTimelineEvents = [
-    {
-        "Date": "05.12.2025",
-        "Time": "12:16",
-        "Trailer No.": "XJWP612",
-        "Address": "2151 SW 36TH ST",
-        "City": "San Antonio",
-        "State": "TX",
-        "Zip": "78237",
-        "Tank No. ": "1",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "05.08.2025",
-        "Time": "9:04",
-        "Trailer No.": "EAQY355",
-        "Address": "207 E HWY 90A",
-        "City": "Richmond",
-        "State": "TX",
-        "Zip": "77469",
-        "Tank No. ": "1",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "05.02.2025",
-        "Time": "5:52",
-        "Trailer No.": "QIBL401",
-        "Address": "619 CROSSROADS ST",
-        "City": "Laredo",
-        "State": "TX",
-        "Zip": "78040",
-        "Tank No. ": "6",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "04.05.2025",
-        "Time": "2:40",
-        "Trailer No.": "ZMXN329",
-        "Address": "2901 highway 35 N",
-        "City": "Rockport",
-        "State": "TX",
-        "Zip": "78382",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "03.30.2025",
-        "Time": "23:28",
-        "Trailer No.": "YDAL921",
-        "Address": "6321 S 23rd St.",
-        "City": "McAllen",
-        "State": "TX",
-        "Zip": "78503",
-        "Tank No. ": "2",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "03.24.2025",
-        "Time": "20:16",
-        "Trailer No.": "WQOG696",
-        "Address": "6321 S 23rd St.",
-        "City": "McAllen",
-        "State": "TX",
-        "Zip": "78503",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "01.03.2025",
-        "Time": "17:04",
-        "Trailer No.": "MLCP696",
-        "Address": "11102 IH-37 Access",
-        "City": "Corpus Christi",
-        "State": "TX",
-        "Zip": "78410",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "05.19.2024",
-        "Time": "13:52",
-        "Trailer No.": "CSHQ488",
-        "Address": "2202 HOLLY ROAD",
-        "City": "Corpus Christi",
-        "State": "TX",
-        "Zip": "78415",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "05.14.2024",
-        "Time": "10:40",
-        "Trailer No.": "NDTN157",
-        "Address": "9111 N. Interstate 35",
-        "City": "Jarrell",
-        "State": "TX",
-        "Zip": "76537",
-        "Tank No. ": "7",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "04.18.2024",
-        "Time": "7:28",
-        "Trailer No.": "WAYQ933",
-        "Address": "16555 HUEBNER RD",
-        "City": "San Antonio",
-        "State": "TX",
-        "Zip": "78248",
-        "Tank No. ": "3",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "04.12.2024",
-        "Time": "4:16",
-        "Trailer No.": "VYQJ687",
-        "Address": "1301 N LOOP 340",
-        "City": "LACY LAKEVIEW",
-        "State": "TX",
-        "Zip": "76705",
-        "Tank No. ": "6",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "04.04.2024",
-        "Time": "1:04",
-        "Trailer No.": "XVMF575",
-        "Address": "720 SPRING VALLEY",
-        "City": "Hewitt",
-        "State": "TX",
-        "Zip": "76643",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "02.22.2024",
-        "Time": "21:52",
-        "Trailer No.": "HRZC199",
-        "Address": "3225 E EXPY 83",
-        "City": "Weslaco",
-        "State": "TX",
-        "Zip": "78596",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "02.11.2024",
-        "Time": "18:40",
-        "Trailer No.": "WWRO626",
-        "Address": "101 N WATER ST",
-        "City": "Burnet",
-        "State": "TX",
-        "Zip": "78611",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "01.29.2024",
-        "Time": "15:28",
-        "Trailer No.": "XPUW441",
-        "Address": "S. 9th & Tyler Ave.",
-        "City": "Harlingen",
-        "State": "TX",
-        "Zip": "78550",
-        "Tank No. ": "2",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "01.18.2024",
-        "Time": "12:16",
-        "Trailer No.": "TZJB482",
-        "Address": "S. 9th & Tyler Ave.",
-        "City": "Harlingen",
-        "State": "TX",
-        "Zip": "78550",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "01.12.2024",
-        "Time": "9:04",
-        "Trailer No.": "IQZL863",
-        "Address": "15513 STATE HWY 30",
-        "City": "Roans Prairie",
-        "State": "TX",
-        "Zip": "77845",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "01.03.2024",
-        "Time": "5:52",
-        "Trailer No.": "RKAS706",
-        "Address": "5202 IH 37",
-        "City": "Corpus Christi",
-        "State": "TX",
-        "Zip": "78408",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "12.22.2024",
-        "Time": "2:40",
-        "Trailer No.": "XQGA728",
-        "Address": "12200 FM 969 RD",
-        "City": "Austin",
-        "State": "TX",
-        "Zip": "78724",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "12.21.2024",
-        "Time": "23:28",
-        "Trailer No.": "OXKD221",
-        "Address": "905 N. McCoy Blvd.",
-        "City": "New Boston",
-        "State": "TX",
-        "Zip": "75570",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "12.13.2024",
-        "Time": "20:16",
-        "Trailer No.": "FDQV927",
-        "Address": "101 EE OHNMEISS BLVD",
-        "City": "Lampasas",
-        "State": "TX",
-        "Zip": "76550",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "12.02.2024",
-        "Time": "17:04",
-        "Trailer No.": "NALY964",
-        "Address": "16222 WALLISVILLE RD",
-        "City": "Houston",
-        "State": "TX",
-        "Zip": "77049",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "11.09.2024",
-        "Time": "13:52",
-        "Trailer No.": "OXXE632",
-        "Address": "27137 TOMBALL PKWY",
-        "City": "Tomball",
-        "State": "TX",
-        "Zip": "77375",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "10.30.2024",
-        "Time": "10:40",
-        "Trailer No.": "FRFK999",
-        "Address": "6406 Old Pearsall Rd",
-        "City": "San Antonio",
-        "State": "TX",
-        "Zip": "78242",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "09.09.2024",
-        "Time": "7:28",
-        "Trailer No.": "NASZ308",
-        "Address": "21997 FM 1314",
-        "City": "Porter",
-        "State": "TX",
-        "Zip": "77365",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "DIESEL"
-    },
-    {
-        "Date": "08.10.2024",
-        "Time": "4:16",
-        "Trailer No.": "LWRZ693",
-        "Address": "9157 FM 471 N",
-        "City": "San Antonio",
-        "State": "TX",
-        "Zip": "78253",
-        "Tank No. ": "5",
-        "Prevented Delivery ": "GAS-PREM"
-    },
-    {
-        "Date": "06.28.2024",
-        "Time": "1:04",
-        "Trailer No.": "OGOB151",
-        "Address": "10537 N. Hwy. 359",
-        "City": "Mathis",
-        "State": "TX",
-        "Zip": "78368",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-REG"
-    },
-    {
-        "Date": "05.01.2024",
-        "Time": "21:52",
-        "Trailer No.": "ICSL902",
-        "Address": "1303 W MOUNT HOUSTON RD",
-        "City": "Houston",
-        "State": "TX",
-        "Zip": "77038",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-MID"
-    },
-    {
-        "Date": "04.28.2024",
-        "Time": "18:40",
-        "Trailer No.": "LVIC218",
-        "Address": "31700 INTERSTATE 10 W",
-        "City": "Boerne",
-        "State": "TX",
-        "Zip": "78006",
-        "Tank No. ": "4",
-        "Prevented Delivery ": "GAS-REG"
-    }
-    ];
-    $: vehicleEvents = allTimelineEvents.filter(
-    vehicle => vehicle["Trailer No."] === trailer
-  );
-    // Current date for display
-    let currentDisplayDate = new Date();
-    let displayedTimelineEvents = [];
-    let activeView = "monthly";  
-  
-    // Parse date from string format "MM.DD.YYYY"
-    function parseDate(dateString) {
-      if (!dateString) return null;
-      
-      const [month, day, year] = dateString.split('.');
-      // Create a new date object (month is not 0-based in our string format)
-      return new Date(year, parseInt(month) - 1, day);
-    }
-  
-    // Format date for display
-    function formatDisplayDate(date) {
-  if (activeView === 'daily') {
-    // Show day, month, and year for daily view
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-  } else if (activeView === 'weekly') {
-    // For weekly view, show the week range
-    const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay());
-    
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    
-    const startOptions = { month: 'long', day: 'numeric' };
-    const endOptions = { month: 'long', day: 'numeric', year: 'numeric' };
-    
-    // If start and end are in the same month
-    if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
-      return `${startOfWeek.toLocaleDateString('en-US', { day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', endOptions)}`;
-    }
-    
-    return `${startOfWeek.toLocaleDateString('en-US', startOptions)} - ${endOfWeek.toLocaleDateString('en-US', endOptions)}`;
-  } else if (activeView === 'monthly') {
-    // Show only month and year for monthly view
-    const options = { year: 'numeric', month: 'long' };
-    return date.toLocaleDateString('en-US', options);
-  } else {
-    // Fallback or yearly view - show only year
-    return date.getFullYear().toString();
   }
-}
-function goToSelectedDate() {
-  if (!selectedValue) return; // Do nothing if no value is selected
-  
-  const newDate = new Date(currentDisplayDate);
-  
-  if (searchBy === "day") {
-    // Set the day while keeping current month and year
-    newDate.setDate(parseInt(selectedValue));
-    currentDisplayDate = newDate;
-    
-    // Switch to daily view when selecting a specific day
-    changeView('daily');
-  } 
-  else if (searchBy === "month") {
-    // Set the month while keeping current year
-    newDate.setMonth(parseInt(selectedValue) - 1); // Months are 0-indexed in JS
-    newDate.setDate(1); // Set to first day of the month
-    currentDisplayDate = newDate;
-    
-    // Switch to monthly view when selecting a specific month
-    changeView('monthly');
-  } 
-  else if (searchBy === "year") {
-    // Set the year while keeping the current month
-    newDate.setFullYear(parseInt(selectedValue));
-    currentDisplayDate = newDate;
-    
-    // Could optionally switch to yearly view here if implemented
-    changeView('monthly'); // Default to monthly view for now when selecting a year
+
+  function handleBreadcrumbNavigation() {
+      if (previousURL) {
+          goto(`${base}${previousURL}`); 
+      } else {
+          goto(`${base}/vehicle-logging`); 
+      }
   }
-  
-  // Update displayed events
-  displayedTimelineEvents = filterEvents();
-}
-    // Sort events chronologically
-    function sortEventsByDate(events) {
-      return [...events].sort((a, b) => {
-        const dateA = parseDate(a.Date);
-        const dateB = parseDate(b.Date);
-        return dateA - dateB;
-      });
-    }
-  
-    // Filter events based on the active view and current display date
-    function filterEvents() {
-      const sortedEvents = sortEventsByDate(allTimelineEvents);
-      
+
+
+  function parseEpochToDate(epochSeconds) {
+      if (typeof epochSeconds !== 'number' || isNaN(epochSeconds)) return null;
+      return new Date(epochSeconds * 1000); 
+  }
+
+  function formatDisplayDate(date) {
+      if (!date) return ''; 
       if (activeView === 'daily') {
-        // Filter for the current day
-        return sortedEvents.filter(event => {
-          const eventDate = parseDate(event.Date);
-          return eventDate && 
-                 eventDate.getDate() === currentDisplayDate.getDate() &&
-                 eventDate.getMonth() === currentDisplayDate.getMonth() &&
-                 eventDate.getFullYear() === currentDisplayDate.getFullYear();
-        });
+          const options = { year: 'numeric', month: 'long', day: 'numeric' };
+          return date.toLocaleDateString('en-US', options);
       } else if (activeView === 'weekly') {
-        // Get start and end of the week for currentDisplayDate
-        const startOfWeek = new Date(currentDisplayDate);
-        startOfWeek.setDate(currentDisplayDate.getDate() - currentDisplayDate.getDay());
-        
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        
-        return sortedEvents.filter(event => {
-          const eventDate = parseDate(event.Date);
-          return eventDate && eventDate >= startOfWeek && eventDate <= endOfWeek;
-        });
+          const startOfWeek = new Date(date);
+          startOfWeek.setDate(date.getDate() - date.getDay()); // Sunday is 0
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+          const startOptions = { month: 'long', day: 'numeric' };
+          const endOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+
+          if (startOfWeek.getMonth() === endOfWeek.getMonth() && startOfWeek.getFullYear() === endOfWeek.getFullYear()) {
+              return `${startOfWeek.toLocaleDateString('en-US', { day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', endOptions)}`;
+          }
+
+          return `${startOfWeek.toLocaleDateString('en-US', startOptions)} - ${endOfWeek.toLocaleDateString('en-US', endOptions)}`;
+      } else if (activeView === 'monthly') {
+          const options = { year: 'numeric', month: 'long' };
+          return date.toLocaleDateString('en-US', options);
       } else {
-        // Monthly view (default)
-        return sortedEvents.filter(event => {
-          const eventDate = parseDate(event.Date);
-          return eventDate && 
-                 eventDate.getMonth() === currentDisplayDate.getMonth() &&
-                 eventDate.getFullYear() === currentDisplayDate.getFullYear();
-        });
+          return date.getFullYear().toString();
       }
-    }
-  
-    // Navigate timeline forward or backward
-    function navigateTimeline(direction) {
-      if (activeView === 'daily') {
-        // Navigate by days
-        const newDate = new Date(currentDisplayDate);
-        newDate.setDate(currentDisplayDate.getDate() + (direction === 'left' ? -1 : 1));
-        currentDisplayDate = newDate;
-      } else if (activeView === 'weekly') {
-        // Navigate by weeks
-        const newDate = new Date(currentDisplayDate);
-        newDate.setDate(currentDisplayDate.getDate() + (direction === 'left' ? -7 : 7));
-        currentDisplayDate = newDate;
-      } else {
-        // Navigate by months
-        const newDate = new Date(currentDisplayDate);
-        newDate.setMonth(currentDisplayDate.getMonth() + (direction === 'left' ? -1 : 1));
-        currentDisplayDate = newDate;
-      }
-      
-      // Update displayed events
-      displayedTimelineEvents = filterEvents();
-    }
-    
-    // Change view function
-    function changeView(view) {
-      activeView = view;
-      displayedTimelineEvents = filterEvents();
-    }
-  
-    function formatEventDate(dateString) {
-      if (!dateString) return '';
-      
-      const date = parseDate(dateString);
-      if (isNaN(date?.getTime())) return dateString;
-      
+  }
+
+  function formatEventDate(epochSeconds) {
+      const date = parseEpochToDate(epochSeconds);
+      if (isNaN(date?.getTime())) return '';
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return date.toLocaleDateString('en-US', options);
-    }
-  
-    function getPosition(index, total) {
-      // Distribute events across the timeline (leave space on edges)
+  }
+
+
+  function sortEventsByDate(events) {
+      return [...events].sort((a, b) => a.event_timestamp - b.event_timestamp);
+  }
+
+  function filterEvents() {
+      const sortedEvents = sortEventsByDate(allTimelineEvents);
+
+      if (activeView === 'daily') {
+          return sortedEvents.filter(event => {
+              const eventDate = parseEpochToDate(event.event_timestamp);
+              return eventDate &&
+                     eventDate.getDate() === currentDisplayDate.getDate() &&
+                     eventDate.getMonth() === currentDisplayDate.getMonth() &&
+                     eventDate.getFullYear() === currentDisplayDate.getFullYear();
+          });
+      } else if (activeView === 'weekly') {
+          const startOfWeek = new Date(currentDisplayDate);
+          startOfWeek.setHours(0,0,0,0);
+          startOfWeek.setDate(currentDisplayDate.getDate() - currentDisplayDate.getDay());
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6);
+          endOfWeek.setHours(23,59,59,999);
+
+          return sortedEvents.filter(event => {
+              const eventDate = parseEpochToDate(event.event_timestamp);
+              return eventDate && eventDate >= startOfWeek && eventDate <= endOfWeek;
+          });
+      } else { // Monthly view (default)
+          return sortedEvents.filter(event => {
+              const eventDate = parseEpochToDate(event.event_timestamp);
+              return eventDate &&
+                     eventDate.getMonth() === currentDisplayDate.getMonth() &&
+                     eventDate.getFullYear() === currentDisplayDate.getFullYear();
+          });
+      }
+  }
+
+  function navigateTimeline(direction) {
+      const newDate = new Date(currentDisplayDate);
+      if (activeView === 'daily') {
+          newDate.setDate(currentDisplayDate.getDate() + (direction === 'left' ? -1 : 1));
+      } else if (activeView === 'weekly') {
+          newDate.setDate(currentDisplayDate.getDate() + (direction === 'left' ? -7 : 7));
+      } else { // Monthly view
+          newDate.setMonth(currentDisplayDate.getMonth() + (direction === 'left' ? -1 : 1));
+      }
+      currentDisplayDate = newDate; // Update reactive variable
+      displayedTimelineEvents = filterEvents(); // Re-filter and update displayed events
+  }
+
+  function changeView(view) {
+      activeView = view; // Update reactive variable
+      displayedTimelineEvents = filterEvents(); // Re-filter and update displayed events
+  }
+
+  function getPosition(index, total) {
       const minPosition = 5; // 5% from the left edge
       const maxPosition = 95; // 5% from the right edge
       const availableSpace = maxPosition - minPosition;
-      
-      // If only one event, center it
-      if (total === 1) return 50;
-      
-      // Otherwise distribute evenly
-      return minPosition + (availableSpace / (total - 1)) * index;
-    }
-  
-    function setupMobileMenu() {
-      const hamburger = document.getElementById('hamburger-menu');
-      const overlay = document.getElementById('overlay');
-      
-      if (hamburger && overlay) {
-        hamburger.addEventListener('click', function() {
-          isSidebarActive = !isSidebarActive;
-          overlay.style.display = isSidebarActive ? 'block' : 'none';
-        });
-        
-        overlay.addEventListener('click', function() {
-          isSidebarActive = false;
-          overlay.style.display = 'none';
-        });
-        
-        const sidebarLinks = document.querySelectorAll('#mobile-sidebar a');
-        sidebarLinks.forEach(link => {
-          link.addEventListener('click', function() {
-            isSidebarActive = false;
-            overlay.style.display = 'none';
-          });
-        });
-      }
-    }
-  
- 
-  
-    // Initialize events when the component mounts
-    onMount(() => {
-      setupMobileMenu();
-      // Set the initial view to monthly and filter events
-      changeView('monthly');
-    });
-  
-    // Watch for change in displayed events for debugging
 
-    // Add this function to handle breadcrumb navigation
-    function handleBreadcrumbNavigation() {
-        const savedState = localStorage.getItem('deliveryDetailState');
-        if (savedState) {
-            goto(`${base}${previousURL}`, {
-                state: JSON.parse(savedState)
-            });
-        } else {
-            goto(`${base}${previousURL}`);
+      if (total === 1) return 50; // Center if only one event
+      return minPosition + (availableSpace / (total - 1)) * index;
+  }
+
+  function setupMobileMenu() {
+      const hamburger = document.getElementById('hamburger-menu');
+      const sidebar = document.getElementById('mobile-sidebar');
+      const overlay = document.getElementById('overlay');
+
+      if (hamburger && sidebar && overlay) { // Check if elements exist
+          hamburger.addEventListener('click', function() {
+              sidebar.classList.toggle('active');
+              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+          });
+
+          overlay.addEventListener('click', function() {
+              sidebar.classList.remove('active');
+              overlay.style.display = 'none';
+          });
+
+          const sidebarLinks = sidebar.querySelectorAll('a');
+          sidebarLinks.forEach(link => {
+              link.addEventListener('click', function() {
+                  sidebar.classList.remove('active');
+                  overlay.style.display = 'none';
+              });
+          });
+      }
+  }
+  async function fetchEventsData() {
+        if (!trailer) { // Don't fetch if no trailer is set
+            timelineError = "No trailer selected.";
+            timelineLoading = false;
+            allTimelineEvents = []; // Clear previous data
+            displayedTimelineEvents = []; // Clear displayed data
+            return;
+        }
+
+        try {
+            timelineLoading = true;
+            timelineError = null;
+            console.log(`Fetching timeline data for trailer: ${trailer} from API...`);
+            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logs/${trailer}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorData.error || response.statusText}`);
+            }
+            const data = await response.json();
+            console.log(`Timeline data for trailer ${trailer} loaded:`, data);
+
+            allTimelineEvents = data; // Populated with new fetched data
+
+            // Reset currentDisplayDate to today when a new trailer is loaded
+            currentDisplayDate = new Date();
+            // --- MODIFIED: Ensure changeView is called to filter the new data ---
+            changeView(activeView); // Re-filter and update displayed events based on the new 'allTimelineEvents'
+        } catch (error) {
+            console.error(`Failed to load timeline data for trailer ${trailer}:`, error);
+            timelineError = `Failed to load timeline data for ${trailer}: ${error.message || error}`;
+            allTimelineEvents = [];
+            displayedTimelineEvents = [];
+        } finally {
+            timelineLoading = false;
         }
     }
+    $: if (trailer) {
+        fetchEventsData();
+    }
+  onMount(async () => {
+        setupMobileMenu();
+    });
+</script>
 
-  </script>
-  
-  <svelte:head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href='https://fonts.googleapis.com/css?family=Mulish' rel='stylesheet'>
-    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
-    <title>Vehicle Detail</title>
-  </svelte:head>
-  
-  <header>
-    <div class="header-container">
+<svelte:head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href='https://fonts.googleapis.com/css?family=Mulish' rel='stylesheet'>
+  <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+  <title>Vehicle Detail</title>
+</svelte:head>
+
+<header>
+  <div class="header-container">
       <div class="top-header">
-        <a class="top-header-link" href="https://berrys.com">berrys.com</a>
-        <a class="top-header-link" href=" ">Contact Us</a>
+          <a class="top-header-link" href="https://berrys.com">berrys.com</a>
+          <a class="top-header-link" href=" ">Contact Us</a>
       </div>
       <div class="header">
-        <div class="header-background" style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"></div>
-        <div class="hamburger-menu" id="hamburger-menu">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <a href="{base}/home">Home</a>
-        <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-        <a href="{base}/vehicle-logging">Vehicle Logging</a>
-        <a href="{base}/site-data">Site Data</a>
-        <a href="{base}/inventory">Inventory</a>
-        <a href="{base}/analytics">Analytics</a>
-        <input type="text" placeholder="Search...">
-        <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo">
+          <div class="header-background" style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"></div>
+          <div class="hamburger-menu" id="hamburger-menu">
+              <span></span>
+              <span></span>
+              <span></span>
+          </div>
+          <a href="{base}/home">Home</a>
+          <a href="{base}/cross-drops">Cross-Drop Prevention</a>
+          <a href="{base}/vehicle-logging">Vehicle Logging</a>
+          <a href="{base}/site-data">Site Data</a>
+          <a href="{base}/inventory">Inventory</a>
+          <a href="{base}/analytics">Analytics</a>
+          <input type="text" placeholder="Search...">
+          <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo">
       </div>
-    </div>
-  </header>
-  
-  <div class="mobile-sidebar" id="mobile-sidebar" class:active={isSidebarActive}>
-    <a href="{base}/home">Home</a>
-    <a href="{base}/vehicle-logging">Vehicle Logging</a>
-    <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-    <a href="{base}/site-data">Site Data</a>
-    <a href="{base}/inventory">Inventory</a>
-    <a href="{base}/analytics">Analytics</a>
-    <span class="footer-text">Contact Us <br>
+  </div>
+</header>
+
+<div class="mobile-sidebar" id="mobile-sidebar" class:active={isSidebarActive}>
+  <a href="{base}/home">Home</a>
+  <a href="{base}/vehicle-logging">Vehicle Logging</a>
+  <a href="{base}/cross-drops">Cross-Drop Prevention</a>
+  <a href="{base}/site-data">Site Data</a>
+  <a href="{base}/inventory">Inventory</a>
+  <a href="{base}/analytics">Analytics</a>
+  <span class="footer-text">Contact Us <br>
       Berrys Technologies Ltd 141 Lichfield Road, Birmingham ,  B6 5SP , United Kingdom <br> 0121 558 4411 <br>
       enquiries@berrys.com</span>
-  </div>
-  
-  <div class="overlay" id="overlay"></div>
-  
-  <div class="sub-header-container">
-    <div class="sub-header">
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="sub-header-container">
+  <div class="sub-header">
       <img src="{base}/images/Truck_graphic.png" alt="truck_graphic">
       <h1> Vehicle {trailer} </h1>
       <span> Using the time line, hover your mouse above each event to find the delivery detail. You can set the timeline to show delivery daily, weekly or monthly. </span>
-    </div>
-    <div class="breadcrumb">
+  </div>
+  <div class="breadcrumb">
       <a href="{base}/home">Home</a><a href="javascript:void(0)" on:click={handleBreadcrumbNavigation}>{previousURL}</a>/<span> Vehicle Details</span>
-    </div> 
-  </div>
-  
-  <main>
-    <div class="main-container">
-      <span class="main-container-header">
-        Timeline 
-      </span>
-      
-      
-<div class="search-fields">
-  <div class="field-pair">
-    <label for="search-by">Search By:</label>
-    <select id="search-by" name="dates" bind:value={searchBy}>
-      <option value="day">Day</option>
-      <option value="month">Month</option>
-      <option value="year">Year</option>
-    </select>
-  </div>
-  
-  <div class="field-pair">
-    <label for="select">Select:</label>
-    
-    {#if searchBy === "day"}
-      <select id="select" bind:value={selectedValue}>
-        <option value="" disabled selected>Select a day</option>
-        {#each dayOptions as day}
-          <option value={day}>{day}</option>
-        {/each}
-      </select>
-    {:else if searchBy === "month"}
-      <select id="select" bind:value={selectedValue}>
-        <option value="" disabled selected>Select a month</option>
-        {#each monthOptions as month}
-          <option value={month.value}>{month.label}</option>
-        {/each}
-      </select>
-    {:else if searchBy === "year"}
-      <select id="select" bind:value={selectedValue}>
-        <option value="" disabled selected>Select a year</option>
-        {#each yearOptions as year}
-          <option value={year}>{year}</option>
-        {/each}
-      </select>
-    {/if}
-  </div>
-  
-  <div class="field-pair">
-    <button class="go-to-btn" on:click={goToSelectedDate} disabled={!selectedValue}>
-      Go To
-    </button>
   </div>
 </div>
-      
+
+<main>
+  <div class="main-container">
+      <span class="main-container-header">
+          Timeline
+      </span>
+
+      <div class="search-fields">
+          <div class="field-pair">
+              <label for="search-by">Search By:</label>
+              <select id="search-by" name="dates" bind:value={searchBy}>
+                  <option value="day">Day</option>
+                  <option value="month">Month</option>
+                  <option value="year">Year</option>
+              </select>
+          </div>
+
+          <div class="field-pair">
+              <label for="select">Select:</label>
+
+              {#if searchBy === "day"}
+                  <select id="select" bind:value={selectedValue}>
+                      <option value="" disabled selected>Select a day</option>
+                      {#each dayOptions as day}
+                          <option value={day}>{day}</option>
+                      {/each}
+                  </select>
+              {:else if searchBy === "month"}
+                  <select id="select" bind:value={selectedValue}>
+                      <option value="" disabled selected>Select a month</option>
+                      {#each monthOptions as month}
+                          <option value={month.value}>{month.label}</option>
+                      {/each}
+                  </select>
+              {:else if searchBy === "year"}
+                  <select id="select" bind:value={selectedValue}>
+                      <option value="" disabled selected>Select a year</option>
+                      {#each yearOptions as year}
+                          <option value={year}>{year}</option>
+                      {/each}
+                  </select>
+              {/if}
+          </div>
+
+          <div class="field-pair">
+              <button class="go-to-btn" on:click={goToSelectedDate} disabled={!selectedValue}>
+                  Go To
+              </button>
+          </div>
+      </div>
+
       <div class="timeline-navigation desktop-timeline">
-        <img 
-          src="{base}/svg/left-arrow.svg" 
-          alt="left-arrow" 
-          class="left-arrow" 
-          on:click={() => navigateTimeline('left')}
-        >
-        
-        <div class="timeline-container">
-          <div class="current-period">
-            {formatDisplayDate(currentDisplayDate)}
-          </div>
-          
-          <div class="timeline">
-            <div class="timeline-line"></div>
-            
-            {#each displayedTimelineEvents as event, i}
-              <div 
-                class="timeline-event" 
-                style="left: {getPosition(i, displayedTimelineEvents.length)}%"
-              >
-                <div class="timeline-dot"></div>
-                <div class="timeline-date">{formatEventDate(event.Date)}</div>
-                <div class="timeline-popup">
-                  <h3>{event.Address}, {event.City}, {event.State}</h3>
-                <p><strong>Date:</strong> {formatEventDate(event.Date)}</p>
-                <p><strong>Time:</strong> {event.Time}</p>
-                <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
-                <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
-                <p><strong>Prevented Delivery:</strong> {event["Prevented Delivery "]}</p>
-                <button on:click={() => openDetails(event)} class="more-details">
-                  See Delivery Details
-                </button>
-                </div>
+          <img
+              src="{base}/svg/left-arrow.svg"
+              alt="left-arrow"
+              class="left-arrow"
+              on:click={() => navigateTimeline('left')}
+          >
+
+          <div class="timeline-container">
+              <div class="current-period">
+                  {#if timelineLoading}
+                      Loading...
+                  {:else if timelineError}
+                      Error
+                  {:else}
+                      {formatDisplayDate(currentDisplayDate)}
+                  {/if}
               </div>
-            {/each}
-            
-            {#if displayedTimelineEvents.length === 0}
-              <div class="no-events">No events to display for this period</div>
-            {/if}
+
+              <div class="timeline">
+                  <div class="timeline-line"></div>
+
+                  {#if timelineLoading}
+                      <div class="loading-message" style="text-align: center; width: 100%;">Loading events...</div>
+                  {:else if timelineError}
+                      <div class="error-message" style="text-align: center; width: 100%;">{timelineError}</div>
+                  {:else if displayedTimelineEvents.length > 0}
+                      {#each displayedTimelineEvents as event, i}
+                          <div
+                              class="timeline-event"
+                              style="left: {getPosition(i, displayedTimelineEvents.length)}%"
+                          >
+                              <div class="timeline-dot"></div>
+                              <div class="timeline-date">{formatEventDate(event.event_timestamp)}</div>
+                              <div class="timeline-popup">
+                                  <h3>{event.Address}, {event.City}, {event.State}</h3>
+                                  <p><strong>Date:</strong> {formatEventDate(event.event_timestamp)}</p>
+                                  <p><strong>Time:</strong> {formatEpochToTime(event.event_timestamp)}</p>
+                                  <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
+                                  <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
+                                  <p><strong>Product:</strong> {event["Prevented Delivery "] || event.Delivered}</p>
+                                  <button on:click={() => openDetails(event)} class="more-details">
+                                      See Delivery Details
+                                  </button>
+                              </div>
+                          </div>
+                      {/each}
+                  {:else}
+                      <div class="no-events">No events to display for this period</div>
+                  {/if}
+              </div>
+
+              <div class="timeline-controls">
+                  <button
+                      class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
+                      on:click={() => changeView('daily')}
+                  >
+                      Daily
+                  </button>
+                  <button
+                      class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
+                      on:click={() => changeView('weekly')}
+                  >
+                      Weekly
+                  </button>
+                  <button
+                      class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
+                      on:click={() => changeView('monthly')}
+                  >
+                      Monthly
+                  </button>
+              </div>
           </div>
-          
-          <div class="timeline-controls">
-            <button 
-              class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}" 
-              on:click={() => changeView('daily')}
-            >
-              Daily
-            </button>
-            <button 
-              class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}" 
-              on:click={() => changeView('weekly')}
-            >
-              Weekly
-            </button>
-            <button 
-              class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}" 
-              on:click={() => changeView('monthly')}
-            >
-              Monthly
-            </button>
-          </div>
-        </div>
-        
-        <img 
-          src="{base}/svg/right-arrow.svg" 
-          alt="right-arrow" 
-          class="right-arrow" 
-          on:click={() => navigateTimeline('right')}
-        >
+
+          <img
+              src="{base}/svg/right-arrow.svg"
+              alt="right-arrow"
+              class="right-arrow"
+              on:click={() => navigateTimeline('right')}
+          >
       </div>
-      
+
       <div class="mobile-timeline">
-        <div class="current-period">
-          {formatDisplayDate(currentDisplayDate)}
-        </div>
-        
-        <div class="vertical-timeline">
-          {#if displayedTimelineEvents.length > 0}
-            <div class="timeline-line"></div>
-          {/if}
-          
-          {#each displayedTimelineEvents as event, i}
-            <div class="vertical-timeline-event {i % 2 === 0 ? 'left' : 'right'}">
-              <div class="timeline-dot"></div>
-              <div class="timeline-date">{formatEventDate(event.Date)}</div>
-              <div class="timeline-popup">
-                <h3>{event.Address}, {event.City}, {event.State}</h3>
-                <p><strong>Date:</strong> {formatEventDate(event.Date)}</p>
-                <p><strong>Time:</strong> {event.Time}</p>
-                <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
-                <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
-                <p><strong>Prevented Delivery:</strong> {event["Prevented Delivery "]}</p>
-                <button on:click={() => openDetails(event)} class="more-details">
-                  See Delivery Details
-                </button>
-              </div>
-            </div>
-          {/each}
-          
-          {#if displayedTimelineEvents.length === 0}
-            <div class="no-events">No events to display for this period</div>
-          {/if}
-        </div>
-        
-        <div class="timeline-controls">
-          <img 
-          src="{base}/svg/left-arrow.svg" 
-          alt="left-arrow" 
-          class="left-arrow" 
-          on:click={() => navigateTimeline('left')}
-        >
-          <button 
-            class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}" 
-            on:click={() => changeView('daily')}
-          >
-            Daily
-          </button>
-          <button 
-            class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}" 
-            on:click={() => changeView('weekly')}
-          >
-            Weekly
-          </button>
-          <button 
-            class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}" 
-            on:click={() => changeView('monthly')}
-          >
-            Monthly
-          </button>
-          <img 
-          src="{base}/svg/right-arrow.svg" 
-          alt="right-arrow" 
-          class="right-arrow" 
-          on:click={() => navigateTimeline('right')}
-        >
-        </div>
+          <div class="current-period">
+              {#if timelineLoading}
+                  Loading...
+              {:else if timelineError}
+                  Error
+              {:else}
+                  {formatDisplayDate(currentDisplayDate)}
+              {/if}
+          </div>
+
+          <div class="vertical-timeline">
+              {#if displayedTimelineEvents.length > 0}
+                  <div class="timeline-line"></div>
+              {/if}
+
+              {#if timelineLoading}
+                  <div class="loading-message" style="text-align: center;">Loading events...</div>
+              {:else if timelineError}
+                  <div class="error-message" style="text-align: center;">{timelineError}</div>
+              {:else if displayedTimelineEvents.length > 0}
+                  {#each displayedTimelineEvents as event, i}
+                      <div class="vertical-timeline-event {i % 2 === 0 ? 'left' : 'right'}">
+                          <div class="timeline-dot"></div>
+                          <div class="timeline-date">{formatEventDate(event.event_timestamp)}</div>
+                          <div class="timeline-popup">
+                              <h3>{event.Address}, {event.City}, {event.State}</h3>
+                              <p><strong>Date:</strong> {formatEventDate(event.event_timestamp)}</p>
+                              <p><strong>Time:</strong> {formatEpochToTime(event.event_timestamp)}</p>
+                              <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
+                              <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
+                              <p><strong>Product:</strong> {event["Prevented Delivery "] || event.Delivered}</p>
+                              <button on:click={() => openDetails(event)} class="more-details">
+                                  See Delivery Details
+                              </button>
+                          </div>
+                      </div>
+                  {/each}
+              {:else}
+                  <div class="no-events">No events to display for this period</div>
+              {/if}
+          </div>
+
+          <div class="timeline-controls">
+              <img
+                  src="{base}/svg/left-arrow.svg"
+                  alt="left-arrow"
+                  class="left-arrow"
+                  on:click={() => navigateTimeline('left')}
+              >
+              <button
+                  class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
+                  on:click={() => changeView('daily')}
+              >
+                  Daily
+              </button>
+              <button
+                  class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
+                  on:click={() => changeView('weekly')}
+              >
+                  Weekly
+              </button>
+              <button
+                  class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
+                  on:click={() => changeView('monthly')}
+              >
+                  Monthly
+              </button>
+              <img
+                  src="{base}/svg/right-arrow.svg"
+                  alt="right-arrow"
+                  class="right-arrow"
+                  on:click={() => navigateTimeline('right')}
+              >
+          </div>
       </div>
-      
+
       <div class="other-vehicle">
-        <label for="another-vehicle"> Looking for another vehicle? Search: </label>
-        <input id="another-vehicle" class="another-vehicle" on:keydown={(e) => {  if (e.key === 'Enter') {gotoVehicle(e.target.value);e.target.value = '';        }}}>
-        <button class="another-vehicle" 
-        style="color:white;background-color:#014B96" 
-        on:click={() => {
-          const input = document.getElementById('another-vehicle');
-          if (input) {
-            gotoVehicle(input.value);
-            input.value = '';
-          }
-        }}>
-        Go to Vehicle
-      </button>      </div>
-    </div>
-  </main>
-    
-  <footer>
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
+          <label for="another-vehicle"> Looking for another vehicle? Search: </label>
+          <input id="another-vehicle" class="another-vehicle" on:keydown={(e) => { if (e.key === 'Enter') {gotoVehicle(e.target.value);e.target.value = ''; }}}>
+          <button class="another-vehicle"
+          style="color:white;background-color:#014B96"
+          on:click={() => {
+              const input = document.getElementById('another-vehicle');
+              if (input) {
+                  gotoVehicle(input.value);
+                  input.value = '';
+              }
+          }}>
+              Go to Vehicle
+          </button>
+      </div>
+  </div>
+</main>
+
+<footer>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
       <span style="font-size: 1rem; font-family: Mulish;">@copyrights Berrys Global Innovations</span>
       <img src="{base}/images/logo.png" alt="Berrys Logo">
-    </div>
-  </footer>
+  </div>
+</footer>
   
   <style>
     * {

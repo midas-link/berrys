@@ -3,32 +3,40 @@
   import * as vehicleFuncs from "$lib/scripts/vehicle-logging";
   import { base } from "$app/paths";
   import { goto } from "$app/navigation";
-  import { page } from '$app/stores';
+  import { page } from "$app/stores";
   import DropdownField from "./DropdownField.svelte";
+  import { get } from 'svelte/store';
+  import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+  const currentPath = get(page).url.pathname;
 
-    import { get } from 'svelte/store';
-    const currentPath = get(page).url.pathname;
   function openDetails(row) {
-    goto(`${base}/vehicle/${row["Trailer No."]}`, {
-      state: {
-        from: currentPath,
-        trailer: row["Trailer No."],
-      },
-    });
+      goto(`${base}/vehicle/${row["Trailer No."]}`, {
+          state: {
+              from: currentPath,
+              trailer: row["Trailer No."],
+          },
+      });
   }
-  let uniqueCities;
-  let uniqueStates;
-  let rows = [];
-  let filteredRows = [];
+
+
+  let allEvents = []; 
+  let filteredEvents = [];
+  let uniqueCities = [];
+  let uniqueStates = [];
+  let eventsLoading = true;
+  let eventsError = null;
   let detailsVisible = [];
+
+  // Search parameters
   let searchParams = {
-    address: "",
-    state: "",
-    city: "",
-    trailer: "",
-    date: "",
-    fuel: "",
+      address: "",
+      state: "",
+      city: "",
+      trailer: "",
+      date: "",
+      fuel: "", 
   };
+
   let addressInput;
   let stateInput;
   let cityInput;
@@ -36,370 +44,442 @@
   let dateInput;
   let fuelInput;
   let mobileSearchVisible = false;
-  function getRowClass(index) {
-    return index % 2 === 0 ? "row-even" : "row-odd";
-  }
-  function toggleMobileSearch() {
-    mobileSearchVisible = !mobileSearchVisible;
-  }
-  function formatSearchedDate(searchedDate){
-    if(!searchedDate) return "";
-    const date = new Date(searchedDate);
-    const formattedDate = date.toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year:'numeric'
-    }).replace(/\//g,'.');
-    console.log(formattedDate);
-    return formattedDate;
-  }
-  function filterRows() {
-    filteredRows = rows.filter((row) => {
-      const addressMatch =
-        !searchParams.address ||
-        (row.Address &&
-          row.Address.toLowerCase().includes(
-            searchParams.address.toLowerCase()
-          ));
 
-      const stateMatch =
-        !searchParams.state ||
-        (row.State &&
-          row.State.toLowerCase().includes(searchParams.state.toLowerCase()));
-
-      const cityMatch =
-        !searchParams.city ||
-        (row.City &&
-          row.City.toLowerCase().includes(searchParams.city.toLowerCase()));
-
-      const trailerMatch =
-        !searchParams.trailer ||
-        (row["Trailer No."] &&
-          row["Trailer No."]
-            .toLowerCase()
-            .includes(searchParams.trailer.toLowerCase()));
-
-      const dateMatch =
-        !searchParams.date ||
-        (row.Date && row.Date.includes(formatSearchedDate(searchParams.date)));
-
-      const fuelMatch =
-        !searchParams.fuel ||
-        (row["Prevented Delivery "] &&
-          row["Prevented Delivery "]
-            .toLowerCase()
-            .includes(searchParams.fuel.toLowerCase()));
-
-      return (
-        addressMatch &&
-        stateMatch &&
-        cityMatch &&
-        trailerMatch &&
-        dateMatch &&
-        fuelMatch
-      );
-    });
-
-    detailsVisible = Array(filteredRows.length).fill(false);
-
-    toggleLiveStatus();
-  }
-  function clearSearch() {
-    console.log("clearing");
-    searchParams = {
-      address: "",
-      state: "",
-      city: "",
-      trailer: "",
-      date: "",
-      fuel: "",
-    };
-    console.log(searchParams);
-    filteredRows = [...rows];
-
-    detailsVisible = Array(filteredRows.length).fill(false);
-
-    toggleLiveStatus(true);
-  }
-  function toggleDropdown() {
-        document.getElementById("exportDropdown").classList.toggle("show");
-    }
-  function hasSearchInput() {
-    const searchInputs = document.querySelectorAll(".search-fields input");
-    return Array.from(searchInputs).some((input) => input.value.trim() !== "");
-  }
-  function toggleDetails(index) {
-    let newDetailsVisible = [...detailsVisible];
-    newDetailsVisible[index] = !newDetailsVisible[index];
-    detailsVisible = newDetailsVisible;
-  }
- function exportTableToCSV() {
-  const originalTable = document.querySelector("table");
-  const tableClone = originalTable.cloneNode(true);
-  
-  const buttons = tableClone.querySelectorAll(".more-details");
-  buttons.forEach(button => {
-    button.parentNode.textContent = ""; 
-  });
-  
-  const rows = tableClone.querySelectorAll("tr");
-  let csv = [];
-
-
-  const headers = [];
-  const headerCells = rows[0].querySelectorAll("th");
-  headerCells.forEach((cell) => {
-    headers.push(cell.textContent.trim());
-  });
-  csv.push(headers.join(","));
-
-  for (let i = 1; i < rows.length; i++) {
-    const row = [];
-    const cells = rows[i].querySelectorAll("td");
-    cells.forEach((cell) => {
-      let content = cell.textContent.trim().replace(/"/g, '""');
-      row.push(`"${content}"`);
-    });
-    if (row.length > 0) {
-      csv.push(row.join(","));
-    }
-  }
-
-  const csvContent = csv.join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
-  const date = new Date();
-  const formattedDate = date.toISOString().split("T")[0]; // YYYY-MM-DD
-  const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-"); // HH-MM-SS
-  const pageType = document.location.pathname.includes("vehicle-logging")
-    ? "vehicle_logging"
-    : "site_data";
-  const fileName = `${pageType}_${formattedDate}_${formattedTime}.csv`;
-
-  if ("showSaveFilePicker" in window) {
-    async function saveToDisk() {
+  // --- Data Fetching Function ---
+  async function fetchEventsData() {
       try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: fileName,
-          types: [
-            {
-              description: "CSV File",
-              accept: {
-                "text/csv": [".csv"],
-              },
-            },
-          ],
-        });
+          eventsLoading = true;
+          eventsError = null;
+          console.log('Fetching prevented delivery events from API...');
+          const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logging`);
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          console.log('Prevented Delivery Events Data Loaded:', data);
 
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-      } catch (err) {
-        if (err.name !== "AbortError") {
-          fallbackSave();
-        }
+          allEvents = data;
+          filteredEvents = [...allEvents];
+
+          // Extract unique states and cities
+          uniqueStates = [...new Set(allEvents.map(row => row.State).filter(s => s && s.trim() !== ''))];
+          uniqueCities = [...new Set(allEvents.map(row => row.City).filter(c => c && c.trim() !== ''))];
+
+          detailsVisible = Array(filteredEvents.length).fill(false);
+          toggleLiveStatus(true); // Force show live status after initial load
+
+      } catch (error) {
+          console.error("Error fetching prevented delivery events:", error);
+          eventsError = "Failed to load prevented delivery events data. Please try again.";
+      } finally {
+          eventsLoading = false;
       }
+  }
+  function formatDate(dateString) {
+    if (!dateString) return '';
+    
+    // Split the date string into day, month, year
+    const [day, month, year] = dateString.split('.');
+    
+    // Create a new date object (month is 0-based in JavaScript)
+    const date = new Date(year, month - 1, day);
+    
+    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+    
+    const now = new Date();
+    const timeDiff = now - date;
+    const minutesDiff = timeDiff / (1000 * 60);
+    
+    // Check if date is within 30 minutes of current time
+    if (minutesDiff <= 30) {
+        return 'Just now';
     }
-    saveToDisk();
-  } else {
-    fallbackSave();
+    
+    // Check if it's the same day
+    if (date.getDate() === now.getDate() && 
+        date.getMonth() === now.getMonth() && 
+        date.getFullYear() === now.getFullYear()) {
+        return 'Today';
+    }
+    
+    // Check if it's yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (date.getDate() === yesterday.getDate() && 
+        date.getMonth() === yesterday.getMonth() && 
+        date.getFullYear() === yesterday.getFullYear()) {
+        return 'Yesterday';
+    }
+    
+    // Check if it's two days ago
+    const twoDaysAgo = new Date(now);
+    twoDaysAgo.setDate(now.getDate() - 2);
+    if (date.getDate() === twoDaysAgo.getDate() && 
+        date.getMonth() === twoDaysAgo.getMonth() && 
+        date.getFullYear() === twoDaysAgo.getFullYear()) {
+        return 'Two days ago';
+    }
+    
+    // Use original formatting for older dates
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+  // --- Formatting and Utility Functions ---
+  function formatEpochToDisplay(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleDateString('en-GB', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+      }).replace(/\//g, '.');
   }
 
-  function fallbackSave() {
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-}
-function setupMobileMenu() {
-    const hamburger = document.getElementById('hamburger-menu');
-    const sidebar = document.getElementById('mobile-sidebar');
-    const overlay = document.getElementById('overlay');
-    
-    hamburger.addEventListener('click', function() {
-      sidebar.classList.toggle('active');
-      overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
-    });
-    
-    overlay.addEventListener('click', function() {
-      sidebar.classList.remove('active');
-      overlay.style.display = 'none';
-    });
-    
-    const sidebarLinks = sidebar.querySelectorAll('a');
-    sidebarLinks.forEach(link => {
-      link.addEventListener('click', function() {
-        sidebar.classList.remove('active');
-        overlay.style.display = 'none';
+  function formatEpochToTime(timestamp) {
+      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
       });
-    });
   }
-async function exportTableToPDF() {
-  try {
-    const { jsPDF } = window.jspdf;
-    if (!jsPDF) throw new Error("jsPDF library not found");
-    
-    const doc = new jsPDF();
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("Vehicle Logging Data", 14, 15);
+  function getRowClass(index) {
+      return index % 2 === 0 ? "row-even" : "row-odd";
+  }
 
-    const timestamp = new Date().toLocaleString();
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated: ${timestamp}`, 14, 25);
+  function toggleMobileSearch() {
+      mobileSearchVisible = !mobileSearchVisible;
+  }
 
-    const originalTable = document.querySelector("table");
-    if (!originalTable) throw new Error("Table not found");
-    
-    const exportTable = originalTable.cloneNode(true);
-    
-    const buttons = exportTable.querySelectorAll(".more-details");
-    buttons.forEach(button => {
-      const cell = button.closest("td, th");
-      if (cell) cell.textContent = "";
-    });
+  // --- Filtering Logic (now filters on already-filtered data) ---
+  function filterRows() {
+      filteredEvents = allEvents.filter((event) => {
+          const addressMatch =
+              !searchParams.address ||
+              (event.Address && event.Address.toLowerCase().includes(searchParams.address.toLowerCase()));
 
-    doc.autoTable({
-      html: exportTable,
-      startY: 30,
-      styles: {
-        fontSize: 8,
-        cellPadding: 2,
-        overflow: "linebreak",
-        halign: "center",
-      },
-      headStyles: {
-        fillColor: [1, 75, 150],
-        textColor: 255,
-        fontSize: 8,
-        fontStyle: "bold",
-        halign: "center",
-      },
-      alternateRowStyles: {
-        fillColor: [234, 243, 252],
-      },
-      margin: { top: 30 },
-    });
+          const stateMatch =
+              !searchParams.state ||
+              (event.State && event.State.toLowerCase().includes(searchParams.state.toLowerCase()));
 
-    const date = new Date();
-    const formattedDate = date.toISOString().split("T")[0];
-    const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
-    const fileName = `vehicle_logging_${formattedDate}_${formattedTime}.pdf`;
+          const cityMatch =
+              !searchParams.city ||
+              (event.City && event.City.toLowerCase().includes(searchParams.city.toLowerCase()));
 
-    if ("showSaveFilePicker" in window) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: fileName,
-          types: [{
-            description: "PDF File",
-            accept: { "application/pdf": [".pdf"] },
-          }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(doc.output("blob"));
-        await writable.close();
-      } catch (err) {
-        console.error("File save error:", err);
-        fallbackSavePDF(doc, fileName);
+          const trailerMatch =
+              !searchParams.trailer ||
+              (event["Trailer No."] && event["Trailer No."].toLowerCase().includes(searchParams.trailer.toLowerCase()));
+
+          const eventDateStr = event.event_timestamp ? new Date(event.event_timestamp * 1000).toISOString().split('T')[0] : '';
+          const dateMatch =
+              !searchParams.date ||
+              (eventDateStr && eventDateStr.includes(searchParams.date));
+
+          // Fuel match: Only checking "Prevented Delivery " as per page's purpose
+          const fuelMatch =
+              !searchParams.fuel ||
+              (event["Prevented Delivery "] && event["Prevented Delivery "].toLowerCase().includes(searchParams.fuel.toLowerCase()));
+
+
+          return (
+              addressMatch &&
+              stateMatch &&
+              cityMatch &&
+              trailerMatch &&
+              dateMatch &&
+              fuelMatch
+          );
+      });
+
+      detailsVisible = Array(filteredEvents.length).fill(false);
+      toggleLiveStatus();
+  }
+
+  function clearSearch() {
+      console.log("Clearing search parameters.");
+      searchParams = {
+          address: "",
+          state: "",
+          city: "",
+          trailer: "",
+          date: "",
+          fuel: "",
+      };
+      filteredEvents = [...allEvents];
+      detailsVisible = Array(filteredEvents.length).fill(false);
+      toggleLiveStatus(true);
+  }
+
+  function toggleDetails(index) {
+      detailsVisible[index] = !detailsVisible[index];
+      detailsVisible = detailsVisible;
+  }
+
+  // --- Export Functions ---
+  function toggleDropdown() {
+      document.getElementById("exportDropdown").classList.toggle("show");
+  }
+
+  function hasSearchInput() {
+      const searchInputs = document.querySelectorAll(".search-fields input");
+      return Array.from(searchInputs).some((input) => input.value.trim() !== "");
+  }
+
+  function exportTableToCSV() {
+      let csv = [];
+      // Updated headers to reflect content (Prevented Delivery is the main "Product" here)
+      const headers = ["Date", "Time", "City", "Vehicle ID", "Prevented Delivery", "Address", "State", "Tank No."];
+
+      csv.push(headers.join(","));
+
+      filteredEvents.forEach((row) => {
+          const date = formatEpochToDisplay(row.event_timestamp);
+          const time = formatEpochToTime(row.event_timestamp);
+          const cells = [
+              `"${date}"`,
+              `"${time}"`,
+              `"${row.City || ''}"`,
+              `"${row["Trailer No."] || ''}"`,
+              `"${row["Prevented Delivery "] || ''}"`, // Only show prevented delivery here
+              `"${row.Address || ''}"`,
+              `"${row.State || ''}"`,
+              `"T${row.tank_number || ''}"`,
+          ];
+          csv.push(cells.join(","));
+      });
+
+      const csvContent = csv.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+      const date = new Date();
+      const formattedDate = date.toISOString().split("T")[0];
+      const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
+      const pageType = "vehicle_logging";
+      const fileName = `${pageType}_${formattedDate}_${formattedTime}.csv`;
+
+      if ("showSaveFilePicker" in window) {
+          async function saveToDisk() {
+              try {
+                  const handle = await window.showSaveFilePicker({
+                      suggestedName: fileName,
+                      types: [
+                          {
+                              description: "CSV File",
+                              accept: {
+                                  "text/csv": [".csv"],
+                              },
+                          },
+                      ],
+                  });
+                  const writable = await handle.createWritable();
+                  await writable.write(blob);
+                  await writable.close();
+              } catch (err) {
+                  if (err.name !== "AbortError") {
+                      fallbackSave(blob, fileName);
+                  }
+              }
+          }
+          saveToDisk();
+      } else {
+          fallbackSave(blob, fileName);
       }
-    } else {
-      fallbackSavePDF(doc, fileName);
-    }
-
-    return true; 
-  } catch (error) {
-    console.error("PDF generation failed:", error);
-    return false; 
   }
-}
 
-function fallbackSavePDF(doc, fileName) {
-  doc.save(fileName);
-}
+  function fallbackSave(blob, fileName) {
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  }
+
+  async function exportTableToPDF() {
+      try {
+          const { jsPDF } = window.jspdf;
+          if (!jsPDF) throw new Error("jsPDF library not found");
+
+          const doc = new jsPDF();
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(16);
+          doc.text("Vehicle Logging Data", 14, 15);
+
+          const timestamp = new Date().toLocaleString();
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Generated: ${timestamp}`, 14, 25);
+
+          const headers = [
+              "Date",
+              "Time",
+              "City",
+              "Vehicle ID",
+              "Prevented Delivery",
+              "Address",
+              "State",
+              "Tank No."
+          ];
+          const body = filteredEvents.map(row => [
+              formatEpochToDisplay(row.event_timestamp),
+              formatEpochToTime(row.event_timestamp),
+              row.City || '',
+              row["Trailer No."] || '',
+              row["Prevented Delivery "] || '', // Only show prevented delivery here
+              row.Address || '',
+              row.State || '',
+              `T${row.tank_number || ''}`
+          ]);
+
+          doc.autoTable({
+              head: [headers],
+              body: body,
+              startY: 30,
+              styles: {
+                  fontSize: 8,
+                  cellPadding: 2,
+                  overflow: "linebreak",
+                  halign: "center",
+              },
+              headStyles: {
+                  fillColor: [1, 75, 150],
+                  textColor: 255,
+                  fontSize: 8,
+                  fontStyle: "bold",
+                  halign: "center",
+              },
+              alternateRowStyles: {
+                  fillColor: [234, 243, 252],
+              },
+              margin: { top: 30 },
+          });
+
+          const date = new Date();
+          const formattedDate = date.toISOString().split("T")[0];
+          const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
+          const fileName = `vehicle_logging_${formattedDate}_${formattedTime}.pdf`;
+
+          if ("showSaveFilePicker" in window) {
+              try {
+                  const handle = await window.showSaveFilePicker({
+                      suggestedName: fileName,
+                      types: [{
+                          description: "PDF File",
+                          accept: { "application/pdf": [".pdf"] },
+                      }],
+                  });
+                  const writable = await handle.createWritable();
+                  await writable.write(doc.output("blob"));
+                  await writable.close();
+              } catch (err) {
+                  console.error("File save error:", err);
+                  fallbackSavePDF(doc, fileName);
+              }
+          } else {
+              fallbackSavePDF(doc, fileName);
+          }
+
+          return true;
+      } catch (error) {
+          console.error("PDF generation failed:", error);
+          return false;
+      }
+  }
+
+  function fallbackSavePDF(doc, fileName) {
+      doc.save(fileName);
+  }
+
   function toggleLiveStatus(forceShow = false) {
-    const liveStatus = document.querySelector(".toggle-live");
-    if (!liveStatus) return;
+      const liveStatus = document.querySelector(".toggle-live");
+      if (!liveStatus) return;
 
-    if (!forceShow && hasSearchInput()) {
-      liveStatus.style.display = "none";
-    } else {
-      liveStatus.style.display = "block";
-    }
+      if (!forceShow && hasSearchInput()) {
+          liveStatus.style.display = "none";
+      } else {
+          liveStatus.style.display = "block";
+      }
   }
+
+  // --- Mobile Menu Setup (from your existing code) ---
+  function setupMobileMenu() {
+      const hamburger = document.getElementById('hamburger-menu');
+      const sidebar = document.getElementById('mobile-sidebar');
+      const overlay = document.getElementById('overlay');
+
+      if (hamburger && sidebar && overlay) { // Check if elements exist
+          hamburger.addEventListener('click', function() {
+              sidebar.classList.toggle('active');
+              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+          });
+
+          overlay.addEventListener('click', function() {
+              sidebar.classList.remove('active');
+              overlay.style.display = 'none';
+          });
+
+          const sidebarLinks = sidebar.querySelectorAll('a');
+          sidebarLinks.forEach(link => {
+              link.addEventListener('click', function() {
+                  sidebar.classList.remove('active');
+                  overlay.style.display = 'none';
+              });
+          });
+      }
+  }
+
   onMount(async () => {
-    setupMobileMenu();
-    vehicleFuncs.updateDateTime();
-    vehicleFuncs.disableBrowserAutocomplete();
-    
-    console.log("Starting data fetch");
-    try {
-      const result = await vehicleFuncs.fetchVehicleData();
-      console.log("Data fetched:", result);
-      rows = result;
-      filteredRows = [...rows];
-      uniqueStates = [...new Set(rows.map(row => row.State).filter(state => state && state.trim() !== ''))];
-      uniqueCities = [...new Set(rows.map(row => row.City).filter(state => state && state.trim() !== ''))];
-      detailsVisible = Array(rows.length).fill(false);
-    } catch (error) {
-      console.error("Failed to load data:", error);
-    }
+      setupMobileMenu();
+      vehicleFuncs.updateDateTime();
+      vehicleFuncs.disableBrowserAutocomplete();
+      
+      await fetchEventsData(); // Call this directly for event data
 
-    const interval = setInterval(vehicleFuncs.updateDateTime, 1000);
+      const interval = setInterval(vehicleFuncs.updateDateTime, 1000);
 
-    return () => {
-      clearInterval(interval);
-    };
+      return () => {
+          clearInterval(interval);
+      };
   });
 </script>
 
 <svelte:head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    href="https://fonts.googleapis.com/css?family=Mulish"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css?family=Mulish" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css?family=Inter" rel="stylesheet" />
-  <script
-    src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"
-  ></script>
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-  ></script>
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
-  ></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <title>Vehicle Logging</title>
 </svelte:head>
 <header>
   <div class="header-container">
-    <div class="top-header">
-      <a class="top-header-link" href="https://berrys.com">berrys.com</a>
-      <a class="top-header-link" href=" ">Contact Us</a>
-    </div>
-    <div class="header">
-      <div
-        class="header-background"
-        style="      background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
-      ></div>
-      <div class="hamburger-menu" id="hamburger-menu">
-        <span></span>
-        <span></span>
-        <span></span>
+      <div class="top-header">
+          <a class="top-header-link" href="https://berrys.com">berrys.com</a>
+          <a class="top-header-link" href=" ">Contact Us</a>
       </div>
-      <a href="{base}/home">Home</a>
-      <a href="{base}/inventory">Inventory</a>
-      <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-      <a href="{base}/site-data">Site Data</a>
-      <a href="{base}/analytics">Analytics</a>
-      <input type="text" placeholder="Search..." />
-      <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
-    </div>
+      <div class="header">
+          <div
+              class="header-background"
+              style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
+          ></div>
+          <div class="hamburger-menu" id="hamburger-menu">
+              <span></span>
+              <span></span>
+              <span></span>
+          </div>
+          <a href="{base}/home">Home</a>
+          <a href="{base}/inventory">Inventory</a>
+          <a href="{base}/cross-drops">Cross-Drop Prevention</a>
+          <a href="{base}/site-data">Site Data</a>
+          <a href="{base}/analytics">Analytics</a>
+          <input type="text" placeholder="Search..." />
+          <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
+      </div>
   </div>
 </header>
 <div class="mobile-sidebar" id="mobile-sidebar">
@@ -410,213 +490,224 @@ function fallbackSavePDF(doc, fileName) {
   <a href="{base}/inventory">Inventory</a>
   <a href="{base}/analytics">Analytics</a>
   <span class="footer-text">Contact Us <br>
-    Berrys Technologies Ltd 141 Lichfield Road, Birmingham ,  B6 5SP , United Kingdom <br> 0121 558 4411 <br>
-    enquiries@berrys.com</span>
+      Berrys Technologies Ltd 141 Lichfield Road, Birmingham , B6 5SP , United Kingdom <br> 0121 558 4411 <br>
+      enquiries@berrys.com</span>
 </div>
 
 <div class="overlay" id="overlay"></div>
 <div class="sub-header-container">
   <div class="sub-header">
-    <img src="{base}/images/Truck_graphic.png"   alt="Truck Graphic" class="subheader-image"/> <h1>Vehicle Logging</h1>     
-    <span>
-      Access key information on each trailer, with real-time access to
-      deliveries, focusing on trailer ID. See where trailers are located, what
-      they are delivering or a full log on delivery history.
-    </span>
+      <img src="{base}/images/Truck_graphic.png" alt="Truck Graphic" class="subheader-image"/> <h1>Vehicle Logging</h1>
+      <span>
+          Access key information on each trailer, with real-time access to
+          deliveries, focusing on trailer ID. See where trailers are located, what
+          they are delivering or a full log on delivery history.
+      </span>
   </div>
   <div class="breadcrumb">
-    <a href="{base}/home">Home</a> / <span>Vehicle Logging</span>
+      <a href="{base}/home">Home</a> / <span>Vehicle Logging</span>
   </div>
 </div>
 <main class="vehicle-logging-page">
   <div class="main-container">
-    <button on:click={toggleMobileSearch} class="toggle-search-btn"><label for="search-fields" class="search-label"> Search <span style="font-size:1rem">{mobileSearchVisible ?  '▲' : '▼'} </span> </label>   </button>
-    <div class="search-fields" class:visible={mobileSearchVisible}>
-      <label for="ST-address"> Address</label>
-      <input
-        type="text"
-        bind:value={searchParams.address}
-        id="ST-address"
-        name="ST-address"   on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-      />
-      <DropdownField 
-      id="State" 
-      label="State" 
-      options={uniqueStates} 
-      bind:value={searchParams.state}   on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-    />
-    <DropdownField 
-    id="City" 
-    label="City" 
-    options={uniqueCities} 
-    bind:value={searchParams.city}   on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-  />
-      <label for="Trailer_No">Trailer No</label>
-      <input
-        type="text"
-        bind:value={searchParams.trailer}
-        id="Trailer_No"
-        name="Trailer_No"   on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-      />
-      <label for="Date">Date</label>
-      <input
-        type="date"
-        bind:value={searchParams.date}
-        id="Date"
-        name="Date"
-        placeholder="DD/MM/YYYY"   on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-      />
-      <label for="Fuel">Fuel</label>
-      <input type="text" bind:value={searchParams.fuel} id="Fuel" name="Fuel" />
-      <div class="button-container">
-        <button class="search-button" on:click={filterRows}>Search</button>
-        <button class="clear-button" on:click={clearSearch}>Clear</button>
+      <button on:click={toggleMobileSearch} class="toggle-search-btn"><label for="search-fields" class="search-label"> Search <span style="font-size:1rem">{mobileSearchVisible ? '▲' : '▼'} </span> </label> </button>
+      <div class="search-fields" class:visible={mobileSearchVisible}>
+          <label for="ST-address"> Address</label>
+          <input
+              type="text"
+              bind:value={searchParams.address}
+              id="ST-address"
+              name="ST-address" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
+          />
+          <DropdownField
+              id="State"
+              label="State"
+              options={uniqueStates}
+              bind:value={searchParams.state} on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
+          />
+          <DropdownField
+              id="City"
+              label="City"
+              options={uniqueCities}
+              bind:value={searchParams.city} on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
+          />
+          <label for="Trailer_No">Trailer No</label>
+          <input
+              type="text"
+              bind:value={searchParams.trailer}
+              id="Trailer_No"
+              name="Trailer_No" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
+          />
+          <label for="Date">Date</label>
+          <input
+              type="date"
+              bind:value={searchParams.date}
+              id="Date"
+              name="Date"
+              placeholder="YYYY-MM-DD" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
+          />
+          <label for="Fuel">Fuel</label>
+          <input type="text" bind:value={searchParams.fuel} id="Fuel" name="Fuel" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }} />
+          <div class="button-container">
+              <button class="search-button" on:click={filterRows}>Search</button>
+              <button class="clear-button" on:click={clearSearch}>Clear</button>
+          </div>
       </div>
-    </div>
-   
-    <div class="table-header">
-      <div class="live-status">
-        <div class="toggle-live">
-          <label for="table-type" class="table-type">
-            LIVE
-            <span class="live-indicator"></span>
-          </label>
-        </div>
-        <label for="table-type" class="table-type">
-          <span id="current-datetime" class="current-time"></span>
-        </label>
-      </div>
-      <div class="export-dropdown">
-        <button class="export-button" on:click={toggleDropdown}
-          >Export As ▼</button
-        >
-        <div class="dropdown-content" id="exportDropdown">
-          <a href=" " on:click={exportTableToCSV}>CSV</a>
-          <a href=" " on:click={exportTableToPDF}>PDF</a>
-        </div>
-      </div>
-    </div>
-    <div class="data-container">
-      <table class="desktop-view">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>City</th>
-            <th>Vehicle ID</th>
-            <th>Prevented Delivery</th>
-          </tr>
-        </thead>
-        <tbody>
-          {#if filteredRows.length > 0}
-            {#each filteredRows as row, index}              
-              <tr 
-                class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" 
-                on:click={() => toggleDetails(index)}
-              >
-              <td>{vehicleFuncs.formatDate(row.Date)}</td>
-              <td>{row.Time}</td>
-              <td>{row.City}</td>
-              <td>{row["Trailer No."]}</td>
-              <td>{row["Prevented Delivery "]}</td>
-              </tr>
-              {#if detailsVisible[index]}
-                <tr class="details-row {getRowClass(index)}" on:click={() => toggleDetails(index)}>    
-                  <td colspan="4" class="details-cell">
-                    <div class="details-header">Details:</div>
-                    <div class="details-content">
-                      {row.Date} | {row.Time || ""}
-                      <br />
-                      <span class="label">Trailer No.:</span>
-                      {row["Trailer No."] || ""}
-                      <br />
-                      <span class="label">Full Address:</span>
-                      {row.Address || ""} , {row.City} {row.State}
-                      
-                      <br />
-                      <span class="label">Delivered:</span>
-                      {row["Prevented Delivery "] || ""} |
-                      <span class="label">Tank:</span>
-                      T{row["Tank No. "] || ""}
-                    </div>
-                  </td>
-                  <td>
-                    <button on:click={() => openDetails(row)} class="more-details">
-                      View Vehicle Timeline
-                    </button>
-                  </td>
-                </tr>
-              {/if}
-            {/each}
-          {:else}
-            <tr>
-              <td colspan="4" style="text-align: center; padding: 20px;">No results found</td>
-            </tr>
-          {/if}
-        </tbody>
-      </table>
-    
-      <div class="mobile-card-view">
-        {#if filteredRows.length > 0}
-          {#each filteredRows as row, index}
-            <div class="card {getRowClass(index)}" on:click={() => toggleDetails(index)}>
-              <div class="card-header">
-                <div class="card-item">
-                  <span class="card-label"> {vehicleFuncs.formatDate(row.Date) === 'Just now' ? 'Just now' : `${vehicleFuncs.formatDate(row.Date)} `}</span>
-              </div>
-                <div class="card-item">
-                  <span class="card-value" style="margin-left: 2vw;">Fuel: {row["Prevented Delivery "]}</span> 
-                  <span class="card-value" style="margin-left: 2vw;">Vehicle: {row["Trailer No."]}</span>
-                  <span class="card-value" style="position: relative;margin-left:auto"> {detailsVisible[index] ? '▲' : '▼'}</span>
-              </div>
-              </div>
-              
-              {#if detailsVisible[index]}
-                <div class="card-details">
-                  <hr>
-                  <div class="details-header">Details:</div>
-                  <div class="details-content">
-                    <div class="detail-row">
-                      {row.Date} | {row.Time}
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">Trailer No:</span> {row["Trailer No."]}
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''}
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">Delivered:</span> {row["Prevented Delivery "]} <span class="label">Tank:</span>
-                      T{row["Tank No. "] || ""}
-                    </div>
-                    <button on:click={() => openDetails(row)} class="more-details mobile-details-btn">
-                      View Vehicle Timeline
-                    </button>
-                  </div>
-                </div>
-              {/if}
-            </div>
-          {/each}
-        {:else}
-          <div class="no-results">No results found</div>
-        {/if}
-      </div>
-    </div>
-  </div>
 
+      <div class="table-header">
+          <div class="live-status">
+              <div class="toggle-live">
+                  <label for="table-type" class="table-type">
+                      LIVE
+                      <span class="live-indicator"></span>
+                  </label>
+              </div>
+              <label for="table-type" class="table-type">
+                  <span id="current-datetime" class="current-time"></span>
+              </label>
+          </div>
+          <div class="export-dropdown">
+              <button class="export-button" on:click={toggleDropdown}
+              >Export As ▼</button
+              >
+              <div class="dropdown-content" id="exportDropdown">
+                  <a href=" " on:click|preventDefault={exportTableToCSV}>CSV</a>
+                  <a href=" " on:click|preventDefault={exportTableToPDF}>PDF</a>
+              </div>
+          </div>
+      </div>
+
+      <div class="data-container">
+          <table class="desktop-view">
+              <thead>
+                  <tr>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>City</th>
+                      <th>Vehicle ID</th>
+                      <th>Prevented Delivery</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {#if eventsLoading}
+                      <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading events...</td></tr>
+                  {:else if eventsError}
+                      <tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">{eventsError}</td></tr>
+                  {:else if filteredEvents.length > 0}
+                      {#each filteredEvents as row, index}
+                          <tr
+                              class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}"
+                              on:click={() => toggleDetails(index)}
+                          >
+                              <td>{formatDate(formatEpochToDisplay(row.event_timestamp))}</td>
+                              <td>{formatEpochToTime(row.event_timestamp)}</td>
+                              <td>{row.City}</td>
+                              <td>{row["Trailer No."]}</td>
+                              <td>{row["Prevented Delivery "] || row.Delivered}</td>
+                          </tr>
+                          {#if detailsVisible[index]}
+                              <tr class="details-row {getRowClass(index)}" on:click={() => toggleDetails(index)}>
+                                  <td colspan="4" class="details-cell">
+                                      <div class="details-header">Details:</div>
+                                      <div class="details-content">
+                                          <div class="detail-row">
+                                              {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp)}
+                                          </div>
+                                          <div class="detail-row">
+                                              <span class="label">Trailer No.:</span>
+                                              {row["Trailer No."]}
+                                          </div>
+                                          <div class="detail-row">
+                                              <span class="label">Full Address:</span>
+                                              {row.Address || ""}, {row.City} {row.State}
+                                          </div>
+                                          <div class="detail-row">
+                                              <span class="label">Product:</span>
+                                              {row["Prevented Delivery "] || row.Delivered || "" } |
+                                              <span class="label">Tank:</span>
+                                              T{row.tank_number || ""}
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <button on:click={() => openDetails(row)} class="more-details">
+                                          View Vehicle Timeline
+                                      </button>
+                                  </td>
+                              </tr>
+                          {/if}
+                      {/each}
+                  {:else}
+                      <tr>
+                          <td colspan="5" style="text-align: center; padding: 20px;">No results found</td>
+                      </tr>
+                  {/if}
+              </tbody>
+          </table>
+
+          <div class="mobile-card-view">
+              {#if eventsLoading}
+                  <div class="loading-message" style="text-align: center;">Loading events...</div>
+              {:else if eventsError}
+                  <div class="error-message" style="text-align: center;">{eventsError}</div>
+              {:else if filteredEvents.length > 0}
+                  {#each filteredEvents as row, index}
+                      <div class="card {getRowClass(index)}" on:click={() => toggleDetails(index)}>
+                          <div class="card-header">
+                              <div class="card-item">
+                                  <span class="card-label"> {formatDate(formatEpochToDisplay(row.event_timestamp))}</span>
+                              </div>
+                              <div class="card-item">
+                                  <span class="card-value" style="margin-left: 2vw;">Product: {row["Prevented Delivery "] || row.Delivered}</span>
+                                  <span class="card-value" style="margin-left: 2vw;">Vehicle: {row["Trailer No."]}</span>
+                                  <span class="card-value" style="position: relative;margin-left:auto"> {detailsVisible[index] ? '▲' : '▼'}</span>
+                              </div>
+                          </div>
+
+                          {#if detailsVisible[index]}
+                              <div class="card-details">
+                                  <hr>
+                                  <div class="details-header">Details:</div>
+                                  <div class="details-content">
+                                      <div class="detail-row">
+                                          {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp)}
+                                      </div>
+                                      <div class="detail-row">
+                                          <span class="label">Trailer No:</span> {row["Trailer No."]}
+                                      </div>
+                                      <div class="detail-row">
+                                          <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''}
+                                      </div>
+                                      <div class="detail-row">
+                                          <span class="label">Product:</span> {row["Prevented Delivery "] || row.Delivered || ''} <span class="label">Tank:</span>
+                                          T{row.tank_number || ""}
+                                      </div>
+                                      <button on:click={() => openDetails(row)} class="more-details mobile-details-btn">
+                                          View Vehicle Timeline
+                                      </button>
+                                  </div>
+                              </div>
+                          {/if}
+                      </div>
+                  {/each}
+              {:else}
+                  <div class="no-results" style="text-align: center;">No results found</div>
+              {/if}
+          </div>
+      </div>
+  </div>
 </main>
 
 <footer>
   <div
-    style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
+      style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
   >
-    <span style="font-size: 1rem; font-family: Mulish;"
+      <span style="font-size: 1rem; font-family: Mulish;"
       >@copyrights Berrys Global Innovations</span
-    >
-    <img src="{base}/images/logo.png" alt="Berrys Logo" />
+      >
+      <img src="{base}/images/logo.png" alt="Berrys Logo" />
   </div>
 </footer>
-
 <style>
   * {
     margin: 0;
@@ -654,6 +745,7 @@ function fallbackSavePDF(doc, fileName) {
     margin-bottom: 15px;
     padding: 15px;
     transition: all 0.3s ease;
+    min-height:10vh;
   }
   
   .card.row-even {

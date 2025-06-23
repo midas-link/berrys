@@ -7,9 +7,27 @@ const mysql = require('mysql2/promise');
 const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT || 3000; 
+const port = process.env.PORT || 10000; 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://midas-link.github.io'
+];
 
-app.use(cors());
+app.use(cors({
+    origin:function (origin,callback){
+        if(!origin) return callback(null,true);
+        if(allowedOrigins.includes(origin)){
+            return callback(null,true);
+        }
+        console.warn(`CORS: Origin ${origin} not allowed`);
+        const error = new Error('Not allowed by CORS');
+        error.status = 403;
+        callback(error,false);
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
+}));
 app.use(express.json());
 
 const pool = mysql.createPool({

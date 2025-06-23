@@ -1,5 +1,5 @@
 node_modules
-
+H:\Coding\berrys\backend
 # Output
 .output
 .vercel
@@ -14,7 +14,6 @@ Thumbs.db
 
 # Env
 .env
-.env.*
 !.env.example
 !.env.test
 

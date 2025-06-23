@@ -590,6 +590,7 @@
     margin: 0 auto;
   }
   .company-logo{
+    width: 54px !important;
     height: 6vh !important;
   }
   .sub-header-profile-name {

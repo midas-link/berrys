@@ -20,6 +20,14 @@
                 setTimeout(() => {
                     window.location.href = `${base}/home`;
                 }, 2000); // Delay of 2000 milliseconds (2 seconds)
+            }
+            else if(email=== 'admin@admin.com' && password === 'Berryngham123!'){
+                const popup = document.getElementById('popup');
+                popup.style.display = 'flex';
+
+                setTimeout(() => {
+                    window.location.href = `${base}/admin`;
+                }, 2000); // Delay of 2000 milliseconds (2 seconds)
             } else {
                 wrongLogin.innerHTML = `<div class='wrong-credentials'>Invalid credentials. Please try again.</div>`;
                 signInButton.insertAdjacentElement('afterend', wrongLogin);

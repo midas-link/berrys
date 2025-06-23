@@ -1,6 +1,9 @@
 <script>
 import { onMount } from 'svelte';
 import { base } from '$app/paths';
+import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+let dataLoading = true;
+let dataLoadingError=null;
 function setupMobileMenu() {
     const hamburger = document.getElementById('hamburger-menu');
     const sidebar = document.getElementById('mobile-sidebar');
@@ -27,8 +30,22 @@ function setupMobileMenu() {
   }
 let rows = [];
 onMount(async () => {
-  const res = await fetch(`${base}/table_data/inventory_data.json`);
+  //const res = await fetch(`${base}/table_data/inventory_data.json`);
+  try{
+  const res = await fetch(`${PUBLIC_API_BASE_URL}/api/Inventory/`);
+  if(!res.ok){
+    const errorData = await res.json().catch(()=> ({ message: 'Unknown error'}));
+    throw new Error(`HTTP error! Status: ${res.status}. Message: ${errorData.error || res.statusText}`);
+  }
   rows = await res.json();
+
+  } catch(error){
+    console.error("Failed to load inventory data",error);
+    dataLoadingError = `Failed to load data : ${error.message || error}`;
+
+  } finally{
+    dataLoading = false;
+  }
   setupMobileMenu();
 });
 </script>
@@ -126,14 +143,22 @@ onMount(async () => {
                     </tr>
                     </thead>
                     <tbody>
+                      {#if dataLoading}
+                      <div class="loading-message" style="text-align: center; width: 100%;">Loading events...</div>
+                      {:else if dataLoadingError}
+                      <div class="error-message" style="text-align: center; width: 100%;">{dataLoadingError}</div>
+                      {:else if rows.length>0}
                       {#each rows as item}
                         <tr>
                           <td>{item['Midas #1']}</td>
                           <td>{item['Midas #2']}</td>
-                          <td>{item['Trailer ']}</td>
-                          <td>{item['Location ']}</td>
+                          <td>{item['Trailer']}</td>
+                          <td>{item['Location']}</td>
                         </tr>
                       {/each}
+                      {:else}
+                      <div class="no-events">No data to display</div>
+                    {/if}
                     </tbody>
                   </table>
             </div>
@@ -443,7 +468,7 @@ onMount(async () => {
             margin: 0 auto;
         }
         .header-company img {
-            width: 5vh;
+            width: 54px;
             height: 6vh;
             display: block;
             margin: 0 auto;
