@@ -44,6 +44,40 @@
           hour12: false
       });
   }
+  function goToSelectedDate() {
+  if (!selectedValue) return; // Do nothing if no value is selected
+  
+  const newDate = new Date(currentDisplayDate);
+  
+  if (searchBy === "day") {
+    // Set the day while keeping current month and year
+    newDate.setDate(parseInt(selectedValue));
+    currentDisplayDate = newDate;
+    
+    // Switch to daily view when selecting a specific day
+    changeView('daily');
+  } 
+  else if (searchBy === "month") {
+    // Set the month while keeping current year
+    newDate.setMonth(parseInt(selectedValue) - 1); // Months are 0-indexed in JS
+    newDate.setDate(1); // Set to first day of the month
+    currentDisplayDate = newDate;
+    
+    // Switch to monthly view when selecting a specific month
+    changeView('monthly');
+  } 
+  else if (searchBy === "year") {
+    // Set the year while keeping the current month
+    newDate.setFullYear(parseInt(selectedValue));
+    currentDisplayDate = newDate;
+    
+    // Could optionally switch to yearly view here if implemented
+    changeView('monthly'); // Default to monthly view for now when selecting a year
+  }
+  
+  // Update displayed events
+  displayedTimelineEvents = filterEvents();
+}
   function openDetails(event) {
       goto(`${base}/deliveryDetail/${event.Zip}`, { 
           state: {
