@@ -23,8 +23,8 @@
         address: row.Address,
         city: row.City,
         state: row.State,
-        date: row.date,
-        time: row.time,
+        date: formatDate(formatEpochToDisplay(row.event_timestamp)),
+        time: formatEpochToTime(row.event_timestamp),
         siteCode : row.Zip
       }
     });

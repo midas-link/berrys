@@ -1,6 +1,48 @@
 <script>
-      import { base } from '$app/paths';
-
+    import { base } from '$app/paths';
+    import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+    import { goto } from '$app/navigation';
+    let email = '';
+    let password = '';
+    let companyName = '';
+    let firstName = '';
+    let lastName = '';
+    let phoneNumber = '';
+    let message = '';
+    let isError = false;
+    async function handleRegister(){
+        message = '';
+        isError = false;
+        try  {
+            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/register`,{
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password,
+                    firstName: firstName,
+                    lastName: lastName,
+                    companyName:companyName,
+                    phoneNumber:phoneNumber
+                })
+            });
+            const data = await response.json();
+            if(response.ok){
+                message = data.message || 'Registration successfull!';
+                isError = false;
+                goto(`${base}/login`);
+            } else{
+                message = data.error || 'Registration failed, please try again.';
+                isError = true;
+            }
+        } catch (error){
+            console.log('Client-side registration error:', error);
+            message = 'Network error or server unreachable.';
+            isError = true;
+        }
+    }
 </script>
 <svelte:head>
     <meta charset="UTF-8">
@@ -12,36 +54,36 @@
 
     <main style="background-image: url({base}/images/Sign-in-page.jpg)">
         <div class="register-container">
-            <form class="register-form">
+            <form on:submit|preventDefault={handleRegister} class="register-form">
                 <p class="register-title">Register your account to view delivery logs</p>
                 <div class="form-group solo-input">
-                    <label for="name">Company name</label>
-                    <input type="text" id="name" name="name" placeholder="Company name" required>
+                    <label for="companyName">Company name</label>
+                    <input type="text" id="companyName" name="companyName" bind:value={companyName} placeholder="Company name" required>
                 </div>
                 <div class="form-group coupled-inputs">
                     <div class="input-pair">
-                        <label for="firstname">First name</label>
-                        <input type="text" id="firstname" name="firstname" placeholder="John" required>
+                        <label for="firstName">First name</label>
+                        <input type="text" id="firstName" name="firstname" bind:value={firstName} placeholder="John" required>
                     </div>
                     <div class="input-pair">
-                        <label for="surname">Surname</label>
-                        <input type="text" id="surname" name="surname" placeholder="Smith" required>
+                        <label for="lastName">Surname</label>
+                        <input type="text" id="lastName" name="lastName" bind:value={lastName} placeholder="Smith" required>
                     </div>
                 </div>
                 <div class="form-group coupled-inputs">
                     <div class="input-pair">
                         <label for="email">Email</label>
-                        <input type="email" id="email" name="email" placeholder="email@domain.com" required>
+                        <input type="email" id="email" name="email" bind:value={email} placeholder="email@domain.com" required>
                     </div>
                     <div class="input-pair">
-                        <label for="phone">Phone number</label>
-                        <input type="tel" id="phone" name="phone" placeholder="07123456789" required>
+                        <label for="phoneNumber">Phone number</label>
+                        <input type="tel" id="phoneNumber" name="phoneNumber" bind:value={phoneNumber} placeholder="07123456789" required>
                     </div>
                 </div>
                 <div class="form-group coupled-inputs">
                     <div class="input-pair">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" placeholder="•••••••••" required>
+                        <input type="password" id="password" name="password" bind:value={password} placeholder="•••••••••" required>
                     </div>
                     <div class="input-pair">
                         <label for="confirm-password">Confirm password</label>
@@ -67,6 +109,9 @@
                     <div class="signin-container">Already registered? <a href="{base}/login" style="padding-left:0.1vw">Sign in</a></div>
                 </div>
             </form>
+            {#if message}
+            <p style="color: {isError ? 'red' : 'green'};">{message}</p>
+        {/if}
         </div>
     </main>
 
@@ -77,7 +122,6 @@
 
 
 <style>
-    /* CSS Variables */
 :root {
     --primary-color: #007bff;
     --secondary-color: #6c757d;

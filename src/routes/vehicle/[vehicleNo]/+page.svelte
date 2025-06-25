@@ -85,8 +85,8 @@
               address: event.Address,
               city: event.City,
               state: event.State,
-              date: event.event_timestamp, 
-              time: event.event_timestamp, 
+              date: formatEventDate(event.event_timestamp), 
+              time: formatEpochToTime(event.event_timestamp), 
               siteCode : event.Zip 
           }
       });

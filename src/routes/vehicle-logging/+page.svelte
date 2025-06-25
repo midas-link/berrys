@@ -45,7 +45,6 @@
   let fuelInput;
   let mobileSearchVisible = false;
 
-  // --- Data Fetching Function ---
   async function fetchEventsData() {
       try {
           eventsLoading = true;
@@ -61,12 +60,11 @@
           allEvents = data;
           filteredEvents = [...allEvents];
 
-          // Extract unique states and cities
           uniqueStates = [...new Set(allEvents.map(row => row.State).filter(s => s && s.trim() !== ''))];
           uniqueCities = [...new Set(allEvents.map(row => row.City).filter(c => c && c.trim() !== ''))];
 
           detailsVisible = Array(filteredEvents.length).fill(false);
-          toggleLiveStatus(true); // Force show live status after initial load
+          toggleLiveStatus(true); 
 
       } catch (error) {
           console.error("Error fetching prevented delivery events:", error);
@@ -78,31 +76,26 @@
   function formatDate(dateString) {
     if (!dateString) return '';
     
-    // Split the date string into day, month, year
     const [day, month, year] = dateString.split('.');
     
-    // Create a new date object (month is 0-based in JavaScript)
+    // (month is 0-based in JavaScript)
     const date = new Date(year, month - 1, day);
     
-    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+    if (isNaN(date.getTime())) return dateString; 
     
     const now = new Date();
     const timeDiff = now - date;
     const minutesDiff = timeDiff / (1000 * 60);
     
-    // Check if date is within 30 minutes of current time
     if (minutesDiff <= 30) {
         return 'Just now';
     }
     
-    // Check if it's the same day
     if (date.getDate() === now.getDate() && 
         date.getMonth() === now.getMonth() && 
         date.getFullYear() === now.getFullYear()) {
         return 'Today';
     }
-    
-    // Check if it's yesterday
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
     if (date.getDate() === yesterday.getDate() && 
@@ -111,7 +104,6 @@
         return 'Yesterday';
     }
     
-    // Check if it's two days ago
     const twoDaysAgo = new Date(now);
     twoDaysAgo.setDate(now.getDate() - 2);
     if (date.getDate() === twoDaysAgo.getDate() && 
@@ -120,11 +112,9 @@
         return 'Two days ago';
     }
     
-    // Use original formatting for older dates
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
 }
-  // --- Formatting and Utility Functions ---
   function formatEpochToDisplay(timestamp) {
       if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
       const date = new Date(timestamp * 1000);
@@ -153,7 +143,6 @@
       mobileSearchVisible = !mobileSearchVisible;
   }
 
-  // --- Filtering Logic (now filters on already-filtered data) ---
   function filterRows() {
       filteredEvents = allEvents.filter((event) => {
           const addressMatch =
@@ -177,7 +166,6 @@
               !searchParams.date ||
               (eventDateStr && eventDateStr.includes(searchParams.date));
 
-          // Fuel match: Only checking "Prevented Delivery " as per page's purpose
           const fuelMatch =
               !searchParams.fuel ||
               (event["Prevented Delivery "] && event["Prevented Delivery "].toLowerCase().includes(searchParams.fuel.toLowerCase()));
