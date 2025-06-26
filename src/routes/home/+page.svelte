@@ -462,6 +462,9 @@
       font-family: 'Mulish', sans-serif;
       color:white;
     }
+    .company-logo{
+      width: 5vh !important;
+    }
     .header img {
       max-height: 8vh; 
       max-width: 100%; 
@@ -590,7 +593,6 @@
     margin: 0 auto;
   }
   .company-logo{
-    width: 54px !important;
     height: 6vh !important;
   }
   .sub-header-profile-name {

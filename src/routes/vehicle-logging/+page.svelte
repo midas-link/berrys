@@ -392,7 +392,6 @@
       }
   }
 
-  // --- Mobile Menu Setup (from your existing code) ---
   function setupMobileMenu() {
       const hamburger = document.getElementById('hamburger-menu');
       const sidebar = document.getElementById('mobile-sidebar');
@@ -423,12 +422,31 @@
       setupMobileMenu();
       vehicleFuncs.updateDateTime();
       vehicleFuncs.disableBrowserAutocomplete();
-      
-      await fetchEventsData(); // Call this directly for event data
+      const eventSource = new EventSource(`${PUBLIC_API_BASE_URL}/api/events/subscribe`);
+      eventSource.onopen = () => {
+            console.log('Connected to SSE stream.');
+        };
+      eventSource.addEventListener('dataUpdate', (event) => {
+            console.log('Received SSE update:', event.data);
+            const update = JSON.parse(event.data); 
+
+      if (update.type === 'vehicleLogging') { 
+                console.log('Vehicle Logging data changed via SSE, re-fetching...');
+                fetchEventsData(); 
+            }
+      });
+
+      eventSource.onerror = (err) => {
+            console.error('SSE connection error:', err);
+            eventSource.close(); 
+          };
+      await fetchEventsData(); 
 
       const interval = setInterval(vehicleFuncs.updateDateTime, 1000);
 
       return () => {
+          eventSource.close(); 
+          console.log('SSE connection closed.');
           clearInterval(interval);
       };
   });

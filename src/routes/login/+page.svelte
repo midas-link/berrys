@@ -1,61 +1,60 @@
 <script>
-  import { onMount } from "svelte";
-  import { base } from '$app/paths';
-    function initializeFormValidation() {
-    const form = document.querySelector('.sign-in-form');
-    const signInButton = document.querySelector('.sign-in-button');
-    const wrongLogin = document.createElement('div');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            if (email === 'berrys@test.com' && password === 'Berrys@123!') {
-                // Show the pop-up
-                const popup = document.getElementById('popup');
-                popup.style.display = 'flex';
+    import { onMount } from "svelte";
+    import { base } from '$app/paths';
+    import { PUBLIC_API_BASE_URL } from '$env/static/public';
+    import { goto } from '$app/navigation';
+    let email = '';
+    let password = '';
+    let loginMessage = ''; 
+    let isLoginError = false; 
+    let showPopup = false;    
+
+    async function handleLogin(){
+        loginMessage = ''; 
+        isLoginError = false;
+        showPopup = false; 
+
+        try {
+            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            });
+
+            const data = await response.json(); 
+
+            if (response.ok) { 
+                loginMessage = data.message || 'Logged in successfully.';
+                isLoginError = false;
+                showPopup = true;
+
+                const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
 
                 setTimeout(() => {
-                    window.location.href = `${base}/home`;
-                }, 2000); // Delay of 2000 milliseconds (2 seconds)
+                    goto(redirectPath); 
+                }, 2000);
+
+            } else { 
+                loginMessage = data.error || `Login failed. Status: ${response.status}. Please try again.`;
+                isLoginError = true;
             }
-            else if(email=== 'admin@admin.com' && password === 'Berryngham123!'){
-                const popup = document.getElementById('popup');
-                popup.style.display = 'flex';
-
-                setTimeout(() => {
-                    window.location.href = `${base}/admin`;
-                }, 2000); // Delay of 2000 milliseconds (2 seconds)
-            } else {
-                wrongLogin.innerHTML = `<div class='wrong-credentials'>Invalid credentials. Please try again.</div>`;
-                signInButton.insertAdjacentElement('afterend', wrongLogin);
-
-                // Trigger the fade-in effect
-                setTimeout(() => {
-                    wrongLogin.firstChild.classList.add('show'); 
-                }, 10); // Small timeout to allow the DOM to update
-
-                // Set a timeout to remove the error message after 5 seconds
-                setTimeout(() => {
-                    wrongLogin.firstChild.classList.remove('show'); 
-                    setTimeout(() => {
-                        wrongLogin.remove(); 
-                    }, 500); 
-                }, 5000); 
-            }
-        });
+        } catch (error) {
+            console.error('Client-side login error:', error);
+            loginMessage = 'Network error or server unreachable. Please check your connection.';
+            isLoginError = true;
+        }
     }
-}
 
-onMount(()=>{
+    onMount(() => {
 
-    // Initialize any interactive elements here
-    initializeFormValidation();
-
-});
+    });
 </script>
+
 <svelte:head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -63,20 +62,21 @@ onMount(()=>{
     <link href='https://fonts.googleapis.com/css?family=Mulish' rel='stylesheet'>
     <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
 </svelte:head>
+
 <div class="body-container" style="background-image: url({base}/images/Sign-in-page.jpg)">
     <img src="{base}/images/Midas_Link_logo.png" class="midas-link-logo" alt="logo">
     <main>
         <div class="content">
             <div class="sign-in-container">
-                <form class="sign-in-form">
+                <form on:submit|preventDefault={handleLogin} class="sign-in-form">
                     <p class="sign-in-title">Sign in to your account</p>
                     <div class="form-group">
                         <label for="email"> Your email</label>
-                        <input type="email" id="email" name="email" placeholder="email@domain.com" required>
+                        <input type="email" id="email" name="email" bind:value={email} placeholder="email@domain.com" required>
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" name="password" placeholder="•••••••••" required>
+                        <input type="password" id="password" name="password" bind:value={password} placeholder="•••••••••" required>
                     </div>
                     <div class="form-group below-password-container">
                         <label class="checkbox-container">
@@ -89,24 +89,26 @@ onMount(()=>{
                     <button type="submit" class="sign-in-button">Sign In</button>
                     <div class="no-account">Don't have an account? <a class="sign-up-link" href="{base}/register">Sign up</a></div>
                 </form>
-                <div id="popup" class="popup" style="display: none;">
+
+                {#if loginMessage}
+                    <p style="color: {isLoginError ? 'red' : 'green'};">{loginMessage}</p>
+                {/if}
+
+                <div id="popup" class="popup" style="display: {showPopup ? 'flex' : 'none'};">
                     <div class="popup-content">
-                        <p id="popup-message">✅ Logged in successfully.</p>
-                        <div id="loading-indicator" class="loading-indicator" >
+                        <p id="popup-message">✅ {loginMessage}</p> <div id="loading-indicator" class="loading-indicator" >
                             <p>Loading...</p>
                             <div class="spinner"></div>
                         </div>
                     </div>
                 </div>
             </div>
-           
-        </div> 
+        </div>
     </main>
 </div>
-    <footer>
-         <img src="{base}/images/logo.png" alt="logo">
-    </footer>
-
+<footer>
+    <img src="{base}/images/logo.png" alt="logo">
+</footer>
 <style>
     :root {
         --primary-color: #007bff;
