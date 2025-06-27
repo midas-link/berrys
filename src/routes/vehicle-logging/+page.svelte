@@ -5,21 +5,20 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import DropdownField from "./DropdownField.svelte";
-  import { get } from 'svelte/store';
-  import { PUBLIC_API_BASE_URL } from '$env/static/public'; 
+  import { get } from "svelte/store";
+  import { PUBLIC_API_BASE_URL } from "$env/static/public";
   const currentPath = get(page).url.pathname;
 
   function openDetails(row) {
-      goto(`${base}/vehicle/${row["Trailer No."]}`, {
-          state: {
-              from: currentPath,
-              trailer: row["Trailer No."],
-          },
-      });
+    goto(`${base}/vehicle/${row["Trailer No."]}`, {
+      state: {
+        from: currentPath,
+        trailer: row["Trailer No."],
+      },
+    });
   }
 
-
-  let allEvents = []; 
+  let allEvents = [];
   let filteredEvents = [];
   let uniqueCities = [];
   let uniqueStates = [];
@@ -29,12 +28,12 @@
 
   // Search parameters
   let searchParams = {
-      address: "",
-      state: "",
-      city: "",
-      trailer: "",
-      date: "",
-      fuel: "", 
+    address: "",
+    state: "",
+    city: "",
+    trailer: "",
+    date: "",
+    fuel: "",
   };
 
   let addressInput;
@@ -46,446 +45,505 @@
   let mobileSearchVisible = false;
 
   async function fetchEventsData() {
-      try {
-          eventsLoading = true;
-          eventsError = null;
-          console.log('Fetching prevented delivery events from API...');
-          const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logging`);
-          if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          const data = await response.json();
-          console.log('Prevented Delivery Events Data Loaded:', data);
-
-          allEvents = data;
-          filteredEvents = [...allEvents];
-
-          uniqueStates = [...new Set(allEvents.map(row => row.State).filter(s => s && s.trim() !== ''))];
-          uniqueCities = [...new Set(allEvents.map(row => row.City).filter(c => c && c.trim() !== ''))];
-
-          detailsVisible = Array(filteredEvents.length).fill(false);
-          toggleLiveStatus(true); 
-
-      } catch (error) {
-          console.error("Error fetching prevented delivery events:", error);
-          eventsError = "Failed to load prevented delivery events data. Please try again.";
-      } finally {
-          eventsLoading = false;
+    try {
+      eventsLoading = true;
+      eventsError = null;
+      console.log("Fetching prevented delivery events from API...");
+      const response = await fetch(
+        `${PUBLIC_API_BASE_URL}/api/Vehicle_Logging`
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const data = await response.json();
+      console.log("Prevented Delivery Events Data Loaded:", data);
+
+      allEvents = data;
+      filteredEvents = [...allEvents];
+
+      uniqueStates = [
+        ...new Set(
+          allEvents.map((row) => row.State).filter((s) => s && s.trim() !== "")
+        ),
+      ];
+      uniqueCities = [
+        ...new Set(
+          allEvents.map((row) => row.City).filter((c) => c && c.trim() !== "")
+        ),
+      ];
+
+      detailsVisible = Array(filteredEvents.length).fill(false);
+      toggleLiveStatus(true);
+    } catch (error) {
+      console.error("Error fetching prevented delivery events:", error);
+      eventsError =
+        "Failed to load prevented delivery events data. Please try again.";
+    } finally {
+      eventsLoading = false;
+    }
   }
   function formatDate(dateString) {
-    if (!dateString) return '';
-    
-    const [day, month, year] = dateString.split('.');
-    
+    if (!dateString) return "";
+
+    const [day, month, year] = dateString.split(".");
+
     // (month is 0-based in JavaScript)
     const date = new Date(year, month - 1, day);
-    
-    if (isNaN(date.getTime())) return dateString; 
-    
+
+    if (isNaN(date.getTime())) return dateString;
+
     const now = new Date();
     const timeDiff = now - date;
     const minutesDiff = timeDiff / (1000 * 60);
-    
+
     if (minutesDiff <= 30) {
-        return 'Just now';
+      return "Just now";
     }
-    
-    if (date.getDate() === now.getDate() && 
-        date.getMonth() === now.getMonth() && 
-        date.getFullYear() === now.getFullYear()) {
-        return 'Today';
+
+    if (
+      date.getDate() === now.getDate() &&
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
+    ) {
+      return "Today";
     }
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
-    if (date.getDate() === yesterday.getDate() && 
-        date.getMonth() === yesterday.getMonth() && 
-        date.getFullYear() === yesterday.getFullYear()) {
-        return 'Yesterday';
+    if (
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear()
+    ) {
+      return "Yesterday";
     }
-    
+
     const twoDaysAgo = new Date(now);
     twoDaysAgo.setDate(now.getDate() - 2);
-    if (date.getDate() === twoDaysAgo.getDate() && 
-        date.getMonth() === twoDaysAgo.getMonth() && 
-        date.getFullYear() === twoDaysAgo.getFullYear()) {
-        return 'Two days ago';
+    if (
+      date.getDate() === twoDaysAgo.getDate() &&
+      date.getMonth() === twoDaysAgo.getMonth() &&
+      date.getFullYear() === twoDaysAgo.getFullYear()
+    ) {
+      return "Two days ago";
     }
-    
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
-}
+
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    return date.toLocaleDateString("en-US", options);
+  }
   function formatEpochToDisplay(timestamp) {
-      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
-      const date = new Date(timestamp * 1000);
-      return date.toLocaleDateString('en-GB', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-      }).replace(/\//g, '.');
+    if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
+    const date = new Date(timestamp * 1000);
+    return date
+      .toLocaleDateString("en-GB", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, ".");
   }
 
   function formatEpochToTime(timestamp) {
-      if (typeof timestamp !== 'number' || isNaN(timestamp)) return '';
-      const date = new Date(timestamp * 1000);
-      return date.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-      });
+    if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
   }
 
   function getRowClass(index) {
-      return index % 2 === 0 ? "row-even" : "row-odd";
+    return index % 2 === 0 ? "row-even" : "row-odd";
   }
 
   function toggleMobileSearch() {
-      mobileSearchVisible = !mobileSearchVisible;
+    mobileSearchVisible = !mobileSearchVisible;
   }
 
   function filterRows() {
-      filteredEvents = allEvents.filter((event) => {
-          const addressMatch =
-              !searchParams.address ||
-              (event.Address && event.Address.toLowerCase().includes(searchParams.address.toLowerCase()));
+    filteredEvents = allEvents.filter((event) => {
+      const addressMatch =
+        !searchParams.address ||
+        (event.Address &&
+          event.Address.toLowerCase().includes(
+            searchParams.address.toLowerCase()
+          ));
 
-          const stateMatch =
-              !searchParams.state ||
-              (event.State && event.State.toLowerCase().includes(searchParams.state.toLowerCase()));
+      const stateMatch =
+        !searchParams.state ||
+        (event.State &&
+          event.State.toLowerCase().includes(searchParams.state.toLowerCase()));
 
-          const cityMatch =
-              !searchParams.city ||
-              (event.City && event.City.toLowerCase().includes(searchParams.city.toLowerCase()));
+      const cityMatch =
+        !searchParams.city ||
+        (event.City &&
+          event.City.toLowerCase().includes(searchParams.city.toLowerCase()));
 
-          const trailerMatch =
-              !searchParams.trailer ||
-              (event["Trailer No."] && event["Trailer No."].toLowerCase().includes(searchParams.trailer.toLowerCase()));
+      const trailerMatch =
+        !searchParams.trailer ||
+        (event["Trailer No."] &&
+          event["Trailer No."]
+            .toLowerCase()
+            .includes(searchParams.trailer.toLowerCase()));
 
-          const eventDateStr = event.event_timestamp ? new Date(event.event_timestamp * 1000).toISOString().split('T')[0] : '';
-          const dateMatch =
-              !searchParams.date ||
-              (eventDateStr && eventDateStr.includes(searchParams.date));
+      const eventDateStr = event.event_timestamp
+        ? new Date(event.event_timestamp * 1000).toISOString().split("T")[0]
+        : "";
+      const dateMatch =
+        !searchParams.date ||
+        (eventDateStr && eventDateStr.includes(searchParams.date));
 
-          const fuelMatch =
-              !searchParams.fuel ||
-              (event["Prevented Delivery "] && event["Prevented Delivery "].toLowerCase().includes(searchParams.fuel.toLowerCase()));
+      const fuelMatch =
+        !searchParams.fuel ||
+        (event["Prevented Delivery "] &&
+          event["Prevented Delivery "]
+            .toLowerCase()
+            .includes(searchParams.fuel.toLowerCase()));
 
+      return (
+        addressMatch &&
+        stateMatch &&
+        cityMatch &&
+        trailerMatch &&
+        dateMatch &&
+        fuelMatch
+      );
+    });
 
-          return (
-              addressMatch &&
-              stateMatch &&
-              cityMatch &&
-              trailerMatch &&
-              dateMatch &&
-              fuelMatch
-          );
-      });
-
-      detailsVisible = Array(filteredEvents.length).fill(false);
-      toggleLiveStatus();
+    detailsVisible = Array(filteredEvents.length).fill(false);
+    toggleLiveStatus();
   }
 
   function clearSearch() {
-      console.log("Clearing search parameters.");
-      searchParams = {
-          address: "",
-          state: "",
-          city: "",
-          trailer: "",
-          date: "",
-          fuel: "",
-      };
-      filteredEvents = [...allEvents];
-      detailsVisible = Array(filteredEvents.length).fill(false);
-      toggleLiveStatus(true);
+    console.log("Clearing search parameters.");
+    searchParams = {
+      address: "",
+      state: "",
+      city: "",
+      trailer: "",
+      date: "",
+      fuel: "",
+    };
+    filteredEvents = [...allEvents];
+    detailsVisible = Array(filteredEvents.length).fill(false);
+    toggleLiveStatus(true);
   }
 
   function toggleDetails(index) {
-      detailsVisible[index] = !detailsVisible[index];
-      detailsVisible = detailsVisible;
+    detailsVisible[index] = !detailsVisible[index];
+    detailsVisible = detailsVisible;
   }
 
   // --- Export Functions ---
   function toggleDropdown() {
-      document.getElementById("exportDropdown").classList.toggle("show");
+    document.getElementById("exportDropdown").classList.toggle("show");
   }
 
   function hasSearchInput() {
-      const searchInputs = document.querySelectorAll(".search-fields input");
-      return Array.from(searchInputs).some((input) => input.value.trim() !== "");
+    const searchInputs = document.querySelectorAll(".search-fields input");
+    return Array.from(searchInputs).some((input) => input.value.trim() !== "");
   }
 
   function exportTableToCSV() {
-      let csv = [];
-      // Updated headers to reflect content (Prevented Delivery is the main "Product" here)
-      const headers = ["Date", "Time", "City", "Vehicle ID", "Prevented Delivery", "Address", "State", "Tank No."];
+    let csv = [];
+    // Updated headers to reflect content (Prevented Delivery is the main "Product" here)
+    const headers = [
+      "Date",
+      "Time",
+      "City",
+      "Vehicle ID",
+      "Prevented Delivery",
+      "Address",
+      "State",
+      "Tank No.",
+    ];
 
-      csv.push(headers.join(","));
+    csv.push(headers.join(","));
 
-      filteredEvents.forEach((row) => {
-          const date = formatEpochToDisplay(row.event_timestamp);
-          const time = formatEpochToTime(row.event_timestamp);
-          const cells = [
-              `"${date}"`,
-              `"${time}"`,
-              `"${row.City || ''}"`,
-              `"${row["Trailer No."] || ''}"`,
-              `"${row["Prevented Delivery "] || ''}"`, // Only show prevented delivery here
-              `"${row.Address || ''}"`,
-              `"${row.State || ''}"`,
-              `"T${row.tank_number || ''}"`,
-          ];
-          csv.push(cells.join(","));
-      });
+    filteredEvents.forEach((row) => {
+      const date = formatEpochToDisplay(row.event_timestamp);
+      const time = formatEpochToTime(row.event_timestamp);
+      const cells = [
+        `"${date}"`,
+        `"${time}"`,
+        `"${row.City || ""}"`,
+        `"${row["Trailer No."] || ""}"`,
+        `"${row["Prevented Delivery "] || ""}"`, // Only show prevented delivery here
+        `"${row.Address || ""}"`,
+        `"${row.State || ""}"`,
+        `"T${row.tank_number || ""}"`,
+      ];
+      csv.push(cells.join(","));
+    });
 
-      const csvContent = csv.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const csvContent = csv.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 
-      const date = new Date();
-      const formattedDate = date.toISOString().split("T")[0];
-      const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
-      const pageType = "vehicle_logging";
-      const fileName = `${pageType}_${formattedDate}_${formattedTime}.csv`;
+    const date = new Date();
+    const formattedDate = date.toISOString().split("T")[0];
+    const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
+    const pageType = "vehicle_logging";
+    const fileName = `${pageType}_${formattedDate}_${formattedTime}.csv`;
 
-      if ("showSaveFilePicker" in window) {
-          async function saveToDisk() {
-              try {
-                  const handle = await window.showSaveFilePicker({
-                      suggestedName: fileName,
-                      types: [
-                          {
-                              description: "CSV File",
-                              accept: {
-                                  "text/csv": [".csv"],
-                              },
-                          },
-                      ],
-                  });
-                  const writable = await handle.createWritable();
-                  await writable.write(blob);
-                  await writable.close();
-              } catch (err) {
-                  if (err.name !== "AbortError") {
-                      fallbackSave(blob, fileName);
-                  }
-              }
+    if ("showSaveFilePicker" in window) {
+      async function saveToDisk() {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+              {
+                description: "CSV File",
+                accept: {
+                  "text/csv": [".csv"],
+                },
+              },
+            ],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            fallbackSave(blob, fileName);
           }
-          saveToDisk();
-      } else {
-          fallbackSave(blob, fileName);
+        }
       }
+      saveToDisk();
+    } else {
+      fallbackSave(blob, fileName);
+    }
   }
 
   function fallbackSave(blob, fileName) {
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute("download", fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   async function exportTableToPDF() {
-      try {
-          const { jsPDF } = window.jspdf;
-          if (!jsPDF) throw new Error("jsPDF library not found");
+    try {
+      const { jsPDF } = window.jspdf;
+      if (!jsPDF) throw new Error("jsPDF library not found");
 
-          const doc = new jsPDF();
+      const doc = new jsPDF();
 
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(16);
-          doc.text("Vehicle Logging Data", 14, 15);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("Vehicle Logging Data", 14, 15);
 
-          const timestamp = new Date().toLocaleString();
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "normal");
-          doc.text(`Generated: ${timestamp}`, 14, 25);
+      const timestamp = new Date().toLocaleString();
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated: ${timestamp}`, 14, 25);
 
-          const headers = [
-              "Date",
-              "Time",
-              "City",
-              "Vehicle ID",
-              "Prevented Delivery",
-              "Address",
-              "State",
-              "Tank No."
-          ];
-          const body = filteredEvents.map(row => [
-              formatEpochToDisplay(row.event_timestamp),
-              formatEpochToTime(row.event_timestamp),
-              row.City || '',
-              row["Trailer No."] || '',
-              row["Prevented Delivery "] || '', // Only show prevented delivery here
-              row.Address || '',
-              row.State || '',
-              `T${row.tank_number || ''}`
-          ]);
+      const headers = [
+        "Date",
+        "Time",
+        "City",
+        "Vehicle ID",
+        "Prevented Delivery",
+        "Address",
+        "State",
+        "Tank No.",
+      ];
+      const body = filteredEvents.map((row) => [
+        formatEpochToDisplay(row.event_timestamp),
+        formatEpochToTime(row.event_timestamp),
+        row.City || "",
+        row["Trailer No."] || "",
+        row["Prevented Delivery "] || "", // Only show prevented delivery here
+        row.Address || "",
+        row.State || "",
+        `T${row.tank_number || ""}`,
+      ]);
 
-          doc.autoTable({
-              head: [headers],
-              body: body,
-              startY: 30,
-              styles: {
-                  fontSize: 8,
-                  cellPadding: 2,
-                  overflow: "linebreak",
-                  halign: "center",
+      doc.autoTable({
+        head: [headers],
+        body: body,
+        startY: 30,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          overflow: "linebreak",
+          halign: "center",
+        },
+        headStyles: {
+          fillColor: [1, 75, 150],
+          textColor: 255,
+          fontSize: 8,
+          fontStyle: "bold",
+          halign: "center",
+        },
+        alternateRowStyles: {
+          fillColor: [234, 243, 252],
+        },
+        margin: { top: 30 },
+      });
+
+      const date = new Date();
+      const formattedDate = date.toISOString().split("T")[0];
+      const formattedTime = date
+        .toTimeString()
+        .split(" ")[0]
+        .replace(/:/g, "-");
+      const fileName = `vehicle_logging_${formattedDate}_${formattedTime}.pdf`;
+
+      if ("showSaveFilePicker" in window) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+              {
+                description: "PDF File",
+                accept: { "application/pdf": [".pdf"] },
               },
-              headStyles: {
-                  fillColor: [1, 75, 150],
-                  textColor: 255,
-                  fontSize: 8,
-                  fontStyle: "bold",
-                  halign: "center",
-              },
-              alternateRowStyles: {
-                  fillColor: [234, 243, 252],
-              },
-              margin: { top: 30 },
+            ],
           });
-
-          const date = new Date();
-          const formattedDate = date.toISOString().split("T")[0];
-          const formattedTime = date.toTimeString().split(" ")[0].replace(/:/g, "-");
-          const fileName = `vehicle_logging_${formattedDate}_${formattedTime}.pdf`;
-
-          if ("showSaveFilePicker" in window) {
-              try {
-                  const handle = await window.showSaveFilePicker({
-                      suggestedName: fileName,
-                      types: [{
-                          description: "PDF File",
-                          accept: { "application/pdf": [".pdf"] },
-                      }],
-                  });
-                  const writable = await handle.createWritable();
-                  await writable.write(doc.output("blob"));
-                  await writable.close();
-              } catch (err) {
-                  console.error("File save error:", err);
-                  fallbackSavePDF(doc, fileName);
-              }
-          } else {
-              fallbackSavePDF(doc, fileName);
-          }
-
-          return true;
-      } catch (error) {
-          console.error("PDF generation failed:", error);
-          return false;
+          const writable = await handle.createWritable();
+          await writable.write(doc.output("blob"));
+          await writable.close();
+        } catch (err) {
+          console.error("File save error:", err);
+          fallbackSavePDF(doc, fileName);
+        }
+      } else {
+        fallbackSavePDF(doc, fileName);
       }
+
+      return true;
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      return false;
+    }
   }
 
   function fallbackSavePDF(doc, fileName) {
-      doc.save(fileName);
+    doc.save(fileName);
   }
 
   function toggleLiveStatus(forceShow = false) {
-      const liveStatus = document.querySelector(".toggle-live");
-      if (!liveStatus) return;
+    const liveStatus = document.querySelector(".toggle-live");
+    if (!liveStatus) return;
 
-      if (!forceShow && hasSearchInput()) {
-          liveStatus.style.display = "none";
-      } else {
-          liveStatus.style.display = "block";
-      }
+    if (!forceShow && hasSearchInput()) {
+      liveStatus.style.display = "none";
+    } else {
+      liveStatus.style.display = "block";
+    }
   }
 
   function setupMobileMenu() {
-      const hamburger = document.getElementById('hamburger-menu');
-      const sidebar = document.getElementById('mobile-sidebar');
-      const overlay = document.getElementById('overlay');
+    const hamburger = document.getElementById("hamburger-menu");
+    const sidebar = document.getElementById("mobile-sidebar");
+    const overlay = document.getElementById("overlay");
 
-      if (hamburger && sidebar && overlay) { // Check if elements exist
-          hamburger.addEventListener('click', function() {
-              sidebar.classList.toggle('active');
-              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
-          });
+    if (hamburger && sidebar && overlay) {
+      // Check if elements exist
+      hamburger.addEventListener("click", function () {
+        sidebar.classList.toggle("active");
+        overlay.style.display = sidebar.classList.contains("active")
+          ? "block"
+          : "none";
+      });
 
-          overlay.addEventListener('click', function() {
-              sidebar.classList.remove('active');
-              overlay.style.display = 'none';
-          });
+      overlay.addEventListener("click", function () {
+        sidebar.classList.remove("active");
+        overlay.style.display = "none";
+      });
 
-          const sidebarLinks = sidebar.querySelectorAll('a');
-          sidebarLinks.forEach(link => {
-              link.addEventListener('click', function() {
-                  sidebar.classList.remove('active');
-                  overlay.style.display = 'none';
-              });
-          });
-      }
+      const sidebarLinks = sidebar.querySelectorAll("a");
+      sidebarLinks.forEach((link) => {
+        link.addEventListener("click", function () {
+          sidebar.classList.remove("active");
+          overlay.style.display = "none";
+        });
+      });
+    }
   }
 
   onMount(async () => {
-      setupMobileMenu();
-      vehicleFuncs.updateDateTime();
-      vehicleFuncs.disableBrowserAutocomplete();
-      const eventSource = new EventSource(`${PUBLIC_API_BASE_URL}/api/events/subscribe`);
-      eventSource.onopen = () => {
-            console.log('Connected to SSE stream.');
-        };
-      eventSource.addEventListener('dataUpdate', (event) => {
-            console.log('Received SSE update:', event.data);
-            const update = JSON.parse(event.data); 
+    setupMobileMenu();
+    vehicleFuncs.updateDateTime();
+    vehicleFuncs.disableBrowserAutocomplete();
+    const eventSource = new EventSource(
+      `${PUBLIC_API_BASE_URL}/api/events/subscribe`
+    );
+    eventSource.onopen = () => {
+      console.log("Connected to SSE stream.");
+    };
+    eventSource.addEventListener("dataUpdate", (event) => {
+      console.log("Received SSE update:", event.data);
+      const update = JSON.parse(event.data);
 
-      if (update.type === 'vehicleLogging') { 
-                console.log('Vehicle Logging data changed via SSE, re-fetching...');
-                fetchEventsData(); 
-            }
-      });
+      if (update.type === "vehicleLogging") {
+        console.log("Vehicle Logging data changed via SSE, re-fetching...");
+        fetchEventsData();
+      }
+    });
 
-      eventSource.onerror = (err) => {
-            console.error('SSE connection error:', err);
-            eventSource.close(); 
-          };
-      await fetchEventsData(); 
+    eventSource.onerror = (err) => {
+      console.error("SSE connection error:", err);
+      eventSource.close();
+    };
+    await fetchEventsData();
 
-      const interval = setInterval(vehicleFuncs.updateDateTime, 1000);
+    const interval = setInterval(vehicleFuncs.updateDateTime, 1000);
 
-      return () => {
-          eventSource.close(); 
-          console.log('SSE connection closed.');
-          clearInterval(interval);
-      };
+    return () => {
+      eventSource.close();
+      console.log("SSE connection closed.");
+      clearInterval(interval);
+    };
   });
 </script>
 
 <svelte:head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css?family=Mulish" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css?family=Mulish"
+    rel="stylesheet"
+  />
   <link href="https://fonts.googleapis.com/css?family=Inter" rel="stylesheet" />
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <link href="{base}/css/styles.css" rel="stylesheet" />
+  <script
+    src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"
+  ></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+  ></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
+  ></script>
   <title>Vehicle Logging</title>
 </svelte:head>
 <header>
   <div class="header-container">
-      <div class="top-header">
-          <a class="top-header-link" href="https://berrys.com">berrys.com</a>
-          <a class="top-header-link" href=" ">Contact Us</a>
+    <div class="top-header">
+      <a class="top-header-link" href="https://berrys.com">berrys.com</a>
+      <a class="top-header-link" href=" ">Contact Us</a>
+    </div>
+    <div class="header">
+      <div
+        class="header-background"
+        style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
+      ></div>
+      <div class="hamburger-menu" id="hamburger-menu">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
-      <div class="header">
-          <div
-              class="header-background"
-              style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
-          ></div>
-          <div class="hamburger-menu" id="hamburger-menu">
-              <span></span>
-              <span></span>
-              <span></span>
-          </div>
-          <a href="{base}/home">Home</a>
-          <a href="{base}/inventory">Inventory</a>
-          <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-          <a href="{base}/site-data">Site Data</a>
-          <a href="{base}/analytics">Analytics</a>
-          <input type="text" placeholder="Search..." />
-          <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
-      </div>
+      <a href="{base}/home">Home</a>
+      <a href="{base}/inventory">Inventory</a>
+      <a href="{base}/cross-drops">Cross-Drop Prevention</a>
+      <a href="{base}/site-data">Site Data</a>
+      <a href="{base}/analytics">Analytics</a>
+      <input type="text" placeholder="Search..." />
+      <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
+    </div>
   </div>
 </header>
 <div class="mobile-sidebar" id="mobile-sidebar">
@@ -495,236 +553,329 @@
   <a href="{base}/site-data">Site Data</a>
   <a href="{base}/inventory">Inventory</a>
   <a href="{base}/analytics">Analytics</a>
-  <span class="footer-text">Contact Us <br>
-      Berrys Technologies Ltd 141 Lichfield Road, Birmingham , B6 5SP , United Kingdom <br> 0121 558 4411 <br>
-      enquiries@berrys.com</span>
+  <span class="footer-text"
+    >Contact Us <br />
+    Berrys Technologies Ltd 141 Lichfield Road, Birmingham , B6 5SP , United Kingdom
+    <br />
+    0121 558 4411 <br />
+    enquiries@berrys.com</span
+  >
 </div>
 
 <div class="overlay" id="overlay"></div>
 <div class="sub-header-container">
   <div class="sub-header">
-      <img src="{base}/images/Truck_graphic.png" alt="Truck Graphic" class="subheader-image"/> <h1>Vehicle Logging</h1>
-      <span>
-          Access key information on each trailer, with real-time access to
-          deliveries, focusing on trailer ID. See where trailers are located, what
-          they are delivering or a full log on delivery history.
-      </span>
+    <img
+      src="{base}/images/Truck_graphic.png"
+      alt="Truck Graphic"
+      class="subheader-image"
+    />
+    <h1>Vehicle Logging</h1>
+    <span>
+      Access key information on each trailer, with real-time access to
+      deliveries, focusing on trailer ID. See where trailers are located, what
+      they are delivering or a full log on delivery history.
+    </span>
   </div>
   <div class="breadcrumb">
-      <a href="{base}/home">Home</a> / <span>Vehicle Logging</span>
+    <a href="{base}/home">Home</a> / <span>Vehicle Logging</span>
   </div>
 </div>
 <main class="vehicle-logging-page">
   <div class="main-container">
-      <button on:click={toggleMobileSearch} class="toggle-search-btn"><label for="search-fields" class="search-label"> Search <span style="font-size:1rem">{mobileSearchVisible ? '▲' : '▼'} </span> </label> </button>
-      <div class="search-fields" class:visible={mobileSearchVisible}>
-          <label for="ST-address"> Address</label>
-          <input
-              type="text"
-              bind:value={searchParams.address}
-              id="ST-address"
-              name="ST-address" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-          />
-          <DropdownField
-              id="State"
-              label="State"
-              options={uniqueStates}
-              bind:value={searchParams.state} on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-          />
-          <DropdownField
-              id="City"
-              label="City"
-              options={uniqueCities}
-              bind:value={searchParams.city} on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-          />
-          <label for="Trailer_No">Trailer No</label>
-          <input
-              type="text"
-              bind:value={searchParams.trailer}
-              id="Trailer_No"
-              name="Trailer_No" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-          />
-          <label for="Date">Date</label>
-          <input
-              type="date"
-              bind:value={searchParams.date}
-              id="Date"
-              name="Date"
-              placeholder="YYYY-MM-DD" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }}
-          />
-          <label for="Fuel">Fuel</label>
-          <input type="text" bind:value={searchParams.fuel} id="Fuel" name="Fuel" on:keydown={(e) => { if (e.key === 'Enter') filterRows(); }} />
-          <div class="button-container">
-              <button class="search-button" on:click={filterRows}>Search</button>
-              <button class="clear-button" on:click={clearSearch}>Clear</button>
-          </div>
+    <button on:click={toggleMobileSearch} class="toggle-search-btn"
+      ><label for="search-fields" class="search-label">
+        Search <span style="font-size:1rem"
+          >{mobileSearchVisible ? "▲" : "▼"}
+        </span>
+      </label>
+    </button>
+    <div class="search-fields" class:visible={mobileSearchVisible}>
+      <label for="ST-address"> Address</label>
+      <input
+        type="text"
+        bind:value={searchParams.address}
+        id="ST-address"
+        name="ST-address"
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <DropdownField
+        id="State"
+        label="State"
+        options={uniqueStates}
+        bind:value={searchParams.state}
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <DropdownField
+        id="City"
+        label="City"
+        options={uniqueCities}
+        bind:value={searchParams.city}
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <label for="Trailer_No">Trailer No</label>
+      <input
+        type="text"
+        bind:value={searchParams.trailer}
+        id="Trailer_No"
+        name="Trailer_No"
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <label for="Date">Date</label>
+      <input
+        type="date"
+        bind:value={searchParams.date}
+        id="Date"
+        name="Date"
+        placeholder="YYYY-MM-DD"
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <label for="Fuel">Fuel</label>
+      <input
+        type="text"
+        bind:value={searchParams.fuel}
+        id="Fuel"
+        name="Fuel"
+        on:keydown={(e) => {
+          if (e.key === "Enter") filterRows();
+        }}
+      />
+      <div class="button-container">
+        <button class="search-button" on:click={filterRows}>Search</button>
+        <button class="clear-button" on:click={clearSearch}>Clear</button>
       </div>
+    </div>
 
-      <div class="table-header">
-          <div class="live-status">
-              <div class="toggle-live">
-                  <label for="table-type" class="table-type">
-                      LIVE
-                      <span class="live-indicator"></span>
-                  </label>
-              </div>
-              <label for="table-type" class="table-type">
-                  <span id="current-datetime" class="current-time"></span>
-              </label>
-          </div>
-          <div class="export-dropdown">
-              <button class="export-button" on:click={toggleDropdown}
-              >Export As ▼</button
+    <div class="table-header">
+      <div class="live-status">
+        <div class="toggle-live">
+          <label for="table-type" class="table-type">
+            LIVE
+            <span class="live-indicator"></span>
+          </label>
+        </div>
+        <label for="table-type" class="table-type">
+          <span id="current-datetime" class="current-time"></span>
+        </label>
+      </div>
+      <div class="export-dropdown">
+        <button class="export-button" on:click={toggleDropdown}
+          >Export As ▼</button
+        >
+        <div class="dropdown-content" id="exportDropdown">
+          <a href=" " on:click|preventDefault={exportTableToCSV}>CSV</a>
+          <a href=" " on:click|preventDefault={exportTableToPDF}>PDF</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="data-container">
+      <table class="desktop-view">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>City</th>
+            <th>Vehicle ID</th>
+            <th>Prevented Delivery</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#if eventsLoading}
+            <tr
+              ><td colspan="5" style="text-align: center; padding: 20px;"
+                >Loading events...</td
+              ></tr
+            >
+          {:else if eventsError}
+            <tr
+              ><td
+                colspan="5"
+                style="text-align: center; padding: 20px; color: red;"
+                >{eventsError}</td
+              ></tr
+            >
+          {:else if filteredEvents.length > 0}
+            {#each filteredEvents as row, index}
+              <tr
+                class="main-row {getRowClass(index)} {detailsVisible[index]
+                  ? 'hover-row'
+                  : ''}"
+                on:click={() => toggleDetails(index)}
               >
-              <div class="dropdown-content" id="exportDropdown">
-                  <a href=" " on:click|preventDefault={exportTableToCSV}>CSV</a>
-                  <a href=" " on:click|preventDefault={exportTableToPDF}>PDF</a>
-              </div>
-          </div>
-      </div>
-
-      <div class="data-container">
-          <table class="desktop-view">
-              <thead>
-                  <tr>
-                      <th>Date</th>
-                      <th>Time</th>
-                      <th>City</th>
-                      <th>Vehicle ID</th>
-                      <th>Prevented Delivery</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  {#if eventsLoading}
-                      <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading events...</td></tr>
-                  {:else if eventsError}
-                      <tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">{eventsError}</td></tr>
-                  {:else if filteredEvents.length > 0}
-                      {#each filteredEvents as row, index}
-                          <tr
-                              class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}"
-                              on:click={() => toggleDetails(index)}
-                          >
-                              <td>{formatDate(formatEpochToDisplay(row.event_timestamp))}</td>
-                              <td>{formatEpochToTime(row.event_timestamp)}</td>
-                              <td>{row.City}</td>
-                              <td>{row["Trailer No."]}</td>
-                              <td>{row["Prevented Delivery "] || row.Delivered}</td>
-                          </tr>
-                          {#if detailsVisible[index]}
-                              <tr class="details-row {getRowClass(index)}" on:click={() => toggleDetails(index)}>
-                                  <td colspan="4" class="details-cell">
-                                      <div class="details-header">Details:</div>
-                                      <div class="details-content">
-                                          <div class="detail-row">
-                                              {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp)}
-                                          </div>
-                                          <div class="detail-row">
-                                              <span class="label">Trailer No.:</span>
-                                              {row["Trailer No."]}
-                                          </div>
-                                          <div class="detail-row">
-                                              <span class="label">Full Address:</span>
-                                              {row.Address || ""}, {row.City} {row.State}
-                                          </div>
-                                          <div class="detail-row">
-                                              <span class="label">Product:</span>
-                                              {row["Prevented Delivery "] || row.Delivered || "" } |
-                                              <span class="label">Tank:</span>
-                                              T{row.tank_number || ""}
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>
-                                      <button on:click={() => openDetails(row)} class="more-details">
-                                          View Vehicle Timeline
-                                      </button>
-                                  </td>
-                              </tr>
-                          {/if}
-                      {/each}
-                  {:else}
-                      <tr>
-                          <td colspan="5" style="text-align: center; padding: 20px;">No results found</td>
-                      </tr>
-                  {/if}
-              </tbody>
-          </table>
-
-          <div class="mobile-card-view">
-              {#if eventsLoading}
-                  <div class="loading-message" style="text-align: center;">Loading events...</div>
-              {:else if eventsError}
-                  <div class="error-message" style="text-align: center;">{eventsError}</div>
-              {:else if filteredEvents.length > 0}
-                  {#each filteredEvents as row, index}
-                      <div class="card {getRowClass(index)}" on:click={() => toggleDetails(index)}>
-                          <div class="card-header">
-                              <div class="card-item">
-                                  <span class="card-label"> {formatDate(formatEpochToDisplay(row.event_timestamp))}</span>
-                              </div>
-                              <div class="card-item">
-                                  <span class="card-value" style="margin-left: 2vw;">Product: {row["Prevented Delivery "] || row.Delivered}</span>
-                                  <span class="card-value" style="margin-left: 2vw;">Vehicle: {row["Trailer No."]}</span>
-                                  <span class="card-value" style="position: relative;margin-left:auto"> {detailsVisible[index] ? '▲' : '▼'}</span>
-                              </div>
-                          </div>
-
-                          {#if detailsVisible[index]}
-                              <div class="card-details">
-                                  <hr>
-                                  <div class="details-header">Details:</div>
-                                  <div class="details-content">
-                                      <div class="detail-row">
-                                          {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp)}
-                                      </div>
-                                      <div class="detail-row">
-                                          <span class="label">Trailer No:</span> {row["Trailer No."]}
-                                      </div>
-                                      <div class="detail-row">
-                                          <span class="label">Full Address:</span> {row.Address || ''}, {row.City || ''} {row.State || ''}
-                                      </div>
-                                      <div class="detail-row">
-                                          <span class="label">Product:</span> {row["Prevented Delivery "] || row.Delivered || ''} <span class="label">Tank:</span>
-                                          T{row.tank_number || ""}
-                                      </div>
-                                      <button on:click={() => openDetails(row)} class="more-details mobile-details-btn">
-                                          View Vehicle Timeline
-                                      </button>
-                                  </div>
-                              </div>
-                          {/if}
+                <td>{formatDate(formatEpochToDisplay(row.event_timestamp))}</td>
+                <td>{formatEpochToTime(row.event_timestamp)}</td>
+                <td>{row.City}</td>
+                <td>{row["Trailer No."]}</td>
+                <td>{row["Prevented Delivery "] || row.Delivered}</td>
+              </tr>
+              {#if detailsVisible[index]}
+                <tr
+                  class="details-row {getRowClass(index)}"
+                  on:click={() => toggleDetails(index)}
+                >
+                  <td colspan="4" class="details-cell">
+                    <div class="details-header">Details:</div>
+                    <div class="details-content">
+                      <div class="detail-row">
+                        {formatDate(formatEpochToDisplay(row.event_timestamp))} |
+                        {formatEpochToTime(row.event_timestamp)}
                       </div>
-                  {/each}
-              {:else}
-                  <div class="no-results" style="text-align: center;">No results found</div>
+                      <div class="detail-row">
+                        <span class="label">Trailer No.:</span>
+                        {row["Trailer No."]}
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Full Address:</span>
+                        {row.Address || ""}, {row.City}
+                        {row.State}
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Product:</span>
+                        {row["Prevented Delivery "] || row.Delivered || ""} |
+                        <span class="label">Tank:</span>
+                        T{row.tank_number || ""}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      on:click={() => openDetails(row)}
+                      class="more-details"
+                    >
+                      View Vehicle Timeline
+                    </button>
+                  </td>
+                </tr>
               {/if}
+            {/each}
+          {:else}
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 20px;"
+                >No results found</td
+              >
+            </tr>
+          {/if}
+        </tbody>
+      </table>
+
+      <div class="mobile-card-view">
+        {#if eventsLoading}
+          <div class="loading-message" style="text-align: center;">
+            Loading events...
           </div>
+        {:else if eventsError}
+          <div class="error-message" style="text-align: center;">
+            {eventsError}
+          </div>
+        {:else if filteredEvents.length > 0}
+          {#each filteredEvents as row, index}
+            <div
+              class="card {getRowClass(index)}"
+              on:click={() => toggleDetails(index)}
+            >
+              <div class="card-header">
+                <div class="card-item">
+                  <span class="card-label">
+                    {formatDate(
+                      formatEpochToDisplay(row.event_timestamp)
+                    )}</span
+                  >
+                </div>
+                <div class="card-item">
+                  <span class="card-value" style="margin-left: 2vw;"
+                    >Product: {row["Prevented Delivery "] ||
+                      row.Delivered}</span
+                  >
+                  <span class="card-value" style="margin-left: 2vw;"
+                    >Vehicle: {row["Trailer No."]}</span
+                  >
+                  <span
+                    class="card-value"
+                    style="position: relative;margin-left:auto"
+                  >
+                    {detailsVisible[index] ? "▲" : "▼"}</span
+                  >
+                </div>
+              </div>
+
+              {#if detailsVisible[index]}
+                <div class="card-details">
+                  <hr />
+                  <div class="details-header">Details:</div>
+                  <div class="details-content">
+                    <div class="detail-row">
+                      {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(
+                        row.event_timestamp
+                      )}
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Trailer No:</span>
+                      {row["Trailer No."]}
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Full Address:</span>
+                      {row.Address || ""}, {row.City || ""}
+                      {row.State || ""}
+                    </div>
+                    <div class="detail-row">
+                      <span class="label">Product:</span>
+                      {row["Prevented Delivery "] || row.Delivered || ""}
+                      <span class="label">Tank:</span>
+                      T{row.tank_number || ""}
+                    </div>
+                    <button
+                      on:click={() => openDetails(row)}
+                      class="more-details mobile-details-btn"
+                    >
+                      View Vehicle Timeline
+                    </button>
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        {:else}
+          <div class="no-results" style="text-align: center;">
+            No results found
+          </div>
+        {/if}
       </div>
+    </div>
   </div>
 </main>
 
 <footer>
   <div
-      style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
+    style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
   >
-      <span style="font-size: 1rem; font-family: Mulish;"
+    <span style="font-size: 1rem; font-family: Mulish;"
       >@copyrights Berrys Global Innovations</span
-      >
-      <img src="{base}/images/logo.png" alt="Berrys Logo" />
+    >
+    <img src="{base}/images/logo.png" alt="Berrys Logo" />
   </div>
 </footer>
+
 <style>
   * {
-    margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
   .subheader-image {
-    display:none;
+    display: none;
   }
   main {
-    flex: 1; 
+    flex: 1;
     background-color: #f9bc39;
   }
   ::placeholder {
@@ -735,151 +886,88 @@
     width: 100%;
     margin-top: 2vh;
   }
-  
+
   .mobile-card-view {
     display: none;
     width: 95%;
     margin: 0 auto;
   }
-  .toggle-search-btn{
-    display:none;
+  .toggle-search-btn {
+    display: none;
   }
   .card {
     background-color: #fff;
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     margin-bottom: 15px;
     padding: 15px;
     transition: all 0.3s ease;
-    min-height:10vh;
+    min-height: 10vh;
   }
-  
+
   .card.row-even {
     background-color: #f8f9fa;
   }
-  
+
   .card.row-odd {
-    background-color: #EAF3FC;
+    background-color: #eaf3fc;
   }
-  
+
   .card-header {
     display: grid;
     grid-template-columns: 1fr 2fr;
     align-items: center;
     gap: 10px;
   }
-  
+
   .card-item {
     display: flex;
     flex-direction: row;
     margin-bottom: 5px;
   }
-  
+
   .card-label {
     font-weight: bold;
-    color: #014B96;
+    color: #014b96;
     font-size: 0.8rem;
-    font-family: 'Mulish', sans-serif;
+    font-family: "Mulish", sans-serif;
   }
-  
-  
+
   .card-details {
     margin-top: 10px;
     padding-top: 10px;
   }
-  
+
   .card-details hr {
     border: 0;
     height: 1px;
     background-color: #ddd;
     margin: 5px 0 10px 0;
   }
-  
+
   .detail-row {
     margin-bottom: 8px;
-    font-family: 'Mulish', sans-serif;
+    font-family: "Mulish", sans-serif;
     font-size: 0.85rem;
     line-height: 1.4;
   }
-  
+
   .mobile-details-btn {
     margin-top: 10px;
     width: 100%;
   }
-  
+
   .no-results {
     text-align: center;
     padding: 20px;
-    font-family: 'Mulish', sans-serif;
-  }
-  .header-container {
-    width: 100%;
-    background: linear-gradient(to bottom, #001338 0%, #014b96 44%);
-    position: relative;
-    z-index: 1;
-  }
-  .top-header {
-    display: flex;
-    justify-content: flex-end;
-    padding: 1vh 2vw;
-  }
-  .top-header-link {
-    font-size: 0.875rem;
     font-family: "Mulish", sans-serif;
-    color: #aaaaaa;
-    font-style: bold;
-    margin-right: 2.5vw;
-    text-decoration: none;
   }
-  .top-header-link:last-child {
-    margin-right: 20%;
-  }
-  .header {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 2vw;
-  }
-  .header-background {
-    position: absolute;
-    top: 40%;
-    left: 0;
-    width: 100%;
-    height: 70%;
-    background-size: contain;
-    z-index: -1;
-    opacity: 1;
-  }
-  .header img {
-    width: 225px;
-    height: 99px;
-    scale: 1.1;
-    padding-bottom: 2vh;
-    padding-right: 0.5vw;
-  }
-  .header a,
-  .header input,
-  .header img {
-    position: relative;
-    z-index: 1;
-  }
-  .header a {
-    color: #ffffff;
-    text-decoration: none;
-    font-family: "Mulish", sans-serif;
-    font-weight: 700;
-    transition: all 0.3s ease;
-  }
-  .header a:nth-child(3) {
-    margin-left: 10%;
-  }
-  @media (max-width: 1000px){
+  @media (max-width: 1000px) {
     .desktop-view {
       display: none;
     }
-    .toggle-search-btn{
-      display:contents;
+    .toggle-search-btn {
+      display: contents;
     }
     .mobile-card-view {
       display: block;
@@ -888,124 +976,110 @@
       margin-left: 5%;
     }
     * {
-      font-size: 0.75rem ;
+      font-size: 0.75rem;
     }
     .header img {
-      max-height: 8vh; 
-      max-width: 100%; 
-      height: auto; 
+      max-height: 8vh;
+      max-width: 100%;
+      height: auto;
       width: auto;
       scale: 1.1;
-      margin-left:auto;
+      margin-left: auto;
     }
     .sub-header {
       padding-left: 5vw !important;
-      font-size:0.75rem !important;
+      font-size: 0.75rem !important;
     }
     .sub-header h1 {
       justify-self: center;
       font-size: 1.5rem !important;
-      }
-    .sub-header span {
-      display:none;
     }
-    .subheader-image{
-      display:unset;
-      width:40%;
-      height:100%;
+    .sub-header span {
+      display: none;
+    }
+    .subheader-image {
+      display: unset;
+      width: 40%;
+      height: 100%;
       justify-self: center;
       align-items: center;
     }
     .breadcrumb {
-      display:none;
+      display: none;
     }
     main {
-      background-color : white;
+      background-color: white;
     }
     .header a {
-        display:none;
-      }
-      .header input {
-        display:none;
-      }
-      .hamburger-menu {
-        display: block !important;
-        position: absolute;
-        left: 30px;
-        transform: translateY(-50%);
+      display: none;
     }
-      table th{
-        font-size: 0.60rem !important;
-      }
-      table tr{
-        font-size: 0.75rem !important;
+    .header input {
+      display: none;
+    }
 
-      }
+    table th {
+      font-size: 0.6rem !important;
+    }
+    table tr {
+      font-size: 0.75rem !important;
+    }
     .search-button {
       padding: 0.5vh 0.5vw !important;
       margin-top: 0 !important;
       font-size: 0.75rem !important;
-
     }
     .clear-button {
       padding: 0.5vh 0.5vw !important;
       margin-top: 0 !important;
       font-size: 0.75rem !important;
-
     }
-    .more-details{
+    .more-details {
       font-size: 0.75rem !important;
       padding: 0.25vh 1vw !important;
     }
     .search-fields {
       display: none;
       flex-wrap: wrap;
-      margin:auto !important;
+      margin: auto !important;
     }
-    .main-container{
-      font-size:0.75rem !important;
-    }
-    .current-time{
+    .main-container {
       font-size: 0.75rem !important;
     }
-    .table-type{
+    .current-time {
       font-size: 0.75rem !important;
     }
-    .export-button{
+    .table-type {
+      font-size: 0.75rem !important;
+    }
+    .export-button {
       font-size: 0.75rem !important;
     }
     .search-fields label {
       min-width: 90px;
-        margin: 0;
-        padding: 8px 2vw;
-        font-size: 14px !important;
-        white-space: nowrap;
-        align-self: initial !important;
+      margin: 0;
+      padding: 8px 2vw;
+      font-size: 14px !important;
+      white-space: nowrap;
+      align-self: initial !important;
     }
     .search-fields input {
-        flex: 1;
-        width: 100% !important;
-        margin: 0 0 0 10px !important;
-        padding: 8px !important;
-        font-size: 14px !important;
+      flex: 1;
+      width: 100% !important;
+      margin: 0 0 0 10px !important;
+      padding: 8px !important;
+      font-size: 14px !important;
     }
     .table-type,
     .current-time,
     .export-button,
-    .more-details{
-        font-size: 1rem !important;
+    .more-details {
+      font-size: 1rem !important;
     }
     .button-container {
       margin-top: 1vh !important;
     }
-    .export-button{
-      display:none;
-    }
-    footer img {
-      max-height: 10vh; 
-      max-width: 30%; 
-      height: auto; 
-      width: auto !important;
+    .export-button {
+      display: none;
     }
   }
   .header a:hover {
@@ -1030,16 +1104,7 @@
   .header input[type="text"]::placeholder {
     color: rgba(255, 255, 255, 0.7);
   }
-  footer {
-    padding: 1.5rem 0;
-    background: linear-gradient(to right, #001338, #014b96);
-    color: white;
-    width: 100%;
-  }
-  footer img {
-    width: 10%;
-    margin-left: 2%;
-  }
+
   .sub-header-container {
     height: fit-content;
     position: relative;
@@ -1091,7 +1156,7 @@
     align-items: flex-start;
     padding-top: 4vh;
     padding-left: 1vw;
-    padding-right:1vw;
+    padding-right: 1vw;
     border-top-left-radius: 20px;
     background-color: white;
     height: 100%;
@@ -1114,7 +1179,7 @@
     font-family: "Mulish", sans-serif;
     font-weight: 400;
     font-size: 1rem;
-    align-self:center;
+    align-self: center;
   }
   .search-fields input {
     background-color: #eaf3fc;
@@ -1250,7 +1315,7 @@
     cursor: pointer;
     margin-left: auto;
     transition: background-color 0.3s ease;
-    width:10vw;
+    width: 10vw;
   }
   .export-button:hover {
     background-color: #013b77;
@@ -1274,7 +1339,7 @@
     right: 0;
     background-color: #f9f9f9;
     min-width: 120px;
-    width:10vw;
+    width: 10vw;
     box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
     z-index: 1001;
     border-radius: 4px;
@@ -1371,151 +1436,92 @@
     transition: background-color 0.3s ease;
   }
   :global(.vehicle-logging-page .search-fields label) {
-        font-family: 'Mulish', sans-serif;
-        font-weight: 400;
-        font-size: 1rem;
-        align-self:center;
-      }
+    font-family: "Mulish", sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    align-self: center;
+  }
   .more-details:hover {
     background-color: #013b77;
   }
-     
-  .mobile-sidebar {
-      position: fixed;
-      top: 0;
-      left: -250px;
-      width: 250px;
-      height: 100vh;
-      background: linear-gradient(to bottom, #001338 0%, #014B96 100%);
-      z-index: 1002;
-      transition: left 0.3s ease;
-      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
-      padding-top: 60px;
-      overflow-y: auto;
-    }
-    .mobile-sidebar.active {
-      left: 0;
-    }
-    
-    .mobile-sidebar a {
-      display: block;
-      padding: 15px 20px;
-      font-family: 'Mulish', sans-serif;
-      font-weight: 600;
-      color: white;
-      text-decoration: none;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    .mobile-sidebar a:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-    
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 998;
-      display: none;
-    }
-    /* Mobile menu styles */
-    .hamburger-menu {
-      display: none;
-      cursor: pointer;
-      z-index: 1000;
-    }
-    
-    .hamburger-menu span {
-      display: block;
-      width: 25px;
-      height: 3px;
-      margin: 5px 0;
-      background-color: white;
-      border-radius: 3px;
-      transition: 0.3s;
-    }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    display: none;
+  }
 
   @media (max-width: 1000px) {
     .search-fields {
-      display:none;
+      display: none;
       flex-wrap: wrap;
-        transition: all 0.3s ease;
-        flex-direction: column;
-        width: 100%;
-        padding: 0 10px
+      transition: all 0.3s ease;
+      flex-direction: column;
+      width: 100%;
+      padding: 0 10px;
     }
     :global(.search-fields) {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      padding: 0 10px;
     }
-    
+
     /* Create rows for label + input pairs */
-    :global(.search-fields > div), 
+    :global(.search-fields > div),
     :global(.search-fields > label) + input {
-        display: flex;
-        flex-direction: row;
-        width: 100%;
-        margin-bottom: 10px;
-        align-items: center;
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      margin-bottom: 10px;
+      align-items: center;
     }
-    
+
     /* Style labels */
     :global(.search-fields label) {
-        min-width: 90px;
-        margin: 0;
-        padding: 8px 2vw;
-        font-size: 14px !important;
-        white-space: nowrap;
-        align-self: initial !important;
+      min-width: 90px;
+      margin: 0;
+      padding: 8px 2vw;
+      font-size: 14px !important;
+      white-space: nowrap;
+      align-self: initial !important;
     }
-    
+
     /* Style inputs */
     :global(.search-fields input) {
-        flex: 1;
-        width: 100% !important;
-        margin: 0 0 0 10px !important;
-        padding: 8px !important;
-        font-size: 14px !important;
+      flex: 1;
+      width: 100% !important;
+      margin: 0 0 0 10px !important;
+      padding: 8px !important;
+      font-size: 14px !important;
     }
-    
+
     /* Fix dropdown components */
     :global(.custom-dropdown) {
-        display: flex !important;
-        width: 100% !important;
-        margin-bottom: 10px;
+      display: flex !important;
+      width: 100% !important;
+      margin-bottom: 10px;
     }
-    
+
     :global(.custom-dropdown input) {
-        flex: 1;
-        width: 100% !important;
-        padding: 8px !important;
-        margin: 0 0 0 10px !important;
-        height:32px !important;
+      flex: 1;
+      width: 100% !important;
+      padding: 8px !important;
+      margin: 0 0 0 10px !important;
+      height: 32px !important;
     }
-    .header-background{
-      top:25% !important;
-      height:75% !important;
-    }
-    .footer-text{
-      position: absolute;
-      bottom: 2%;
-      left: 0;
-      right: 0;
-      text-align: center;
-      font-size: 0.8rem;
-      font-family: 'Mulish', sans-serif;
-      color:white;
+    .header-background {
+      top: 25% !important;
+      height: 75% !important;
     }
     .search-fields.visible {
       display: flex;
       padding: 0 5vw;
     }
-
-
   }
 </style>
