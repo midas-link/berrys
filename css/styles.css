@@ -3,6 +3,7 @@
     background: linear-gradient(to bottom, #001338 0%, #014B96 44%);
     position: relative;
     z-index: 1;
+    overflow: hidden;
 }
 .top-header {
     display: flex;
@@ -58,15 +59,7 @@
 .header a:nth-child(3) {
     margin-left: 10%;
 }
-@media(max-width:1000px)
-{
-    .hamburger-menu {
-        display: block !important;
-        position: absolute;
-        left: 30px;
-        transform: translateY(-50%);
-    }
-}
+
 .mobile-sidebar {
     position: fixed;
     top: 0;
@@ -124,7 +117,8 @@
     max-height: 10vh; 
     max-width: 30%; 
       height: auto; 
-      width: auto !important;
+      width: 15%;
+      margin-left: 2%;
   }
   footer {
     padding: 1.5rem 0;
@@ -132,7 +126,16 @@
     color: white;
     width: 100%;
 }
-footer img {
-    width: 10%;
-    margin-left: 2%;
+@media(max-width:1000px)
+{
+    .hamburger-menu {
+        display: block !important;
+        position: absolute;
+        left: 30px;
+        transform: translateY(-50%);
+    }
+    footer img {
+      max-width: 50%;
+      width:auto;
+    }
 }
