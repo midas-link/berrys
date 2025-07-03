@@ -66,7 +66,6 @@
       eventsLoading = false;
     }
   }
-  // --- Formatting and Utility Functions ---
   function formatEpochToDisplay(timestamp) {
     if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
     const date = new Date(timestamp * 1000);
@@ -743,8 +742,7 @@
                       ) || ""}
                       <br />
                       <span class="label">Full Address:</span>
-                      {row.Address || ""}, {row.City || ""}
-                      {row.State || ""} | {row.Zip || ""}
+                      {row.Address || ""}, {row.City || ""} {row.State || ""} | {row.Zip || ""}
                       <br />
                       <span class="label">Tank Grade:</span>
                       {row["Delivered"] || ""} |

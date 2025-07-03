@@ -728,8 +728,7 @@
                     <div class="details-header">Details:</div>
                     <div class="details-content">
                       <div class="detail-row">
-                        {formatDate(formatEpochToDisplay(row.event_timestamp))} |
-                        {formatEpochToTime(row.event_timestamp)}
+                        {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(row.event_timestamp)}
                       </div>
                       <div class="detail-row">
                         <span class="label">Trailer No.:</span>
@@ -737,8 +736,7 @@
                       </div>
                       <div class="detail-row">
                         <span class="label">Full Address:</span>
-                        {row.Address || ""}, {row.City}
-                        {row.State}
+                        {row.Address || ""}, {row.City} {row.State} 
                       </div>
                       <div class="detail-row">
                         <span class="label">Product:</span>
@@ -868,7 +866,6 @@
 
 <style>
   * {
-    padding: 0;
     box-sizing: border-box;
   }
   .subheader-image {
@@ -1325,7 +1322,7 @@
     align-items: center;
     width: 90%;
     margin: 0 5vw;
-    z-index: 1000;
+    z-index: 2;
   }
   .export-dropdown {
     position: relative;

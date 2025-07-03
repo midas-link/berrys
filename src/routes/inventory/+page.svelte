@@ -170,16 +170,13 @@
         </thead>
         <tbody>
           {#if dataLoading}
-            <div
-              class="loading-message"
-              style="text-align: center; width: 100%;"
-            >
-              Loading events...
-            </div>
+            <tr>
+              <td colspan="4" class="loading-message" style="text-align: center;">Loading events...</td>
+            </tr>
           {:else if dataLoadingError}
-            <div class="error-message" style="text-align: center; width: 100%;">
-              {dataLoadingError}
-            </div>
+            <tr>
+              <td colspan="4" class="error-message" style="text-align: center;">{dataLoadingError}</td>
+            </tr>
           {:else if rows.length > 0}
             {#each rows as item}
               <tr>
@@ -190,7 +187,9 @@
               </tr>
             {/each}
           {:else}
-            <div class="no-events">No data to display</div>
+            <tr>
+              <td colspan="4" class="no-events" style="text-align: center;">No data to display</td>
+            </tr>
           {/if}
         </tbody>
       </table>
@@ -211,7 +210,6 @@
 
 <style>
   * {
-    padding: 0;
     box-sizing: border-box;
   }
   main {

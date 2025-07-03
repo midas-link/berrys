@@ -836,8 +836,7 @@
                       {row.BusinessUnitName || ""}
                       <br />
                       <span class="label">Full Address:</span>
-                      {row.Address || ""} , {row.City}
-                      {row.State} | {row.Zip}
+                      {row.Address || ""} , {row.City} {row.State} | {row.Zip}
                       <br />
                       <span class="label">Fuel dropped:</span>
                       {row.Delivered || ""} | <span class="label">Tank:</span>
@@ -962,7 +961,6 @@
 
 <style>
   * {
-    padding: 0;
     box-sizing: border-box;
   }
   main {

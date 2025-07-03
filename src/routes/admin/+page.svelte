@@ -1,8 +1,10 @@
 <script>
     import {base} from '$app/paths';
+    import {goto} from '$app/navigation';
     import { onMount } from 'svelte';
-
-    // Sample data - replace with actual data from your backend
+    import { PUBLIC_API_BASE_URL } from "$env/static/public";
+    import { page } from '$app/stores';
+    $: authMessage = $page.url.searchParams.get('authMessage') || '';    
     let stats = {
         totalCustomers: 50,
         activeTrailers: 100,
@@ -10,13 +12,15 @@
         totalDeliveries: 150,
         preventedCrossDrops: 25
     };
-
-    let recentActivity = [];
     let isLoading = true;
+    async function handleLogout(){
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('is_admin');
+        await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
+    }
+  
 
     onMount(async () => {
-        // Add your data fetching logic here
-        isLoading = false;
     });
 </script>
 
@@ -42,7 +46,7 @@
                 <a class="top-header-link" href="https://berrys.com">berrys.com</a>
             </div>
             <div class="header">
-                <a href="{base}/login"> Logout</a>
+                 <button class="logout-btn" on:click={handleLogout} > Logout</button>
             </div>
         </div>
     </header>
@@ -87,7 +91,7 @@
         <div class="admin-actions">
             <h2>Quick Actions</h2>
             <div class="action-buttons">
-                <button class="action-btn">Manage Users</button>
+                <button on:click={goto(`${base}/admin/manageUsers`) } class="action-btn">Manage Users</button>
                 <button class="action-btn">View Reports</button>
                 <button class="action-btn">System Settings</button>
                 <button class="action-btn">Export Data</button>
@@ -120,6 +124,7 @@
 </footer>
 
 <style>
+
 .main-container{
     padding: 2rem;
     max-width: 1200px;
@@ -229,6 +234,10 @@
 }
 .header a{
     padding-bottom:2vh;
+}
+.logout-btn {
+    font-size: 1rem;
+    border-radius: 15px;
 }
 @media (max-width: 1000px) {
     .main-container {

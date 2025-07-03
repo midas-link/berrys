@@ -3,12 +3,13 @@
   import { base } from "$app/paths";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   let email = "";
   let password = "";
   let loginMessage = "";
   let isLoginError = false;
   let showPopup = false;
-
+  $: loginErrorMessage = $page.url.searchParams.get('authMessage') || '';
   async function handleLogin() {
     loginMessage = "";
     isLoginError = false;
@@ -32,7 +33,8 @@
         loginMessage = data.message || "Logged in successfully.";
         isLoginError = false;
         showPopup = true;
-
+        localStorage.setItem('jwt_token',  data.token);
+        localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
         const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
 
         setTimeout(() => {
@@ -79,6 +81,12 @@
     <div class="content">
       <div class="sign-in-container">
         <form on:submit|preventDefault={handleLogin} class="sign-in-form">
+          {#if loginMessage}
+          <p style="color: {isLoginError ? 'red' : 'green'};">{loginMessage}</p>
+        {/if}
+         {#if loginErrorMessage}
+         <p style="color: red;"> {loginErrorMessage}</p> 
+         {/if}
           <p class="sign-in-title">Sign in to your account</p>
           <div class="form-group">
             <label for="email"> Your email</label>
@@ -119,9 +127,6 @@
           </div>
         </form>
 
-        {#if loginMessage}
-          <p style="color: {isLoginError ? 'red' : 'green'};">{loginMessage}</p>
-        {/if}
 
         <div
           id="popup"
