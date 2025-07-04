@@ -12,15 +12,47 @@
         totalDeliveries: 150,
         preventedCrossDrops: 25
     };
-    let isLoading = true;
+    let isLoading = false;
+    let summaryData = [];
+    let error = null;
+    let recentActivity = [];
     async function handleLogout(){
         localStorage.removeItem('jwt_token');
         localStorage.removeItem('is_admin');
         await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
     }
-  
+    async function fetchSummary() {
+        isLoading = true;
+        error = null;
+        const token = localStorage.getItem('jwt_token');
+        const isAdmin = localStorage.getItem('is_admin') === 'true';
+        if(!isAdmin || !token)  {         
+            await goto(`${base}/login?authMessage=${encodeURIComponent('Access Denied. Please log in as an administrator.')}`);
+            return; 
+        }
+        try{
+            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/admin/summary` , {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if(!response.ok) {
+                throw new Error(`Error status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Summary data loaded:" , data);
+
+            summaryData = data;
+        } catch(err) {
+            console.log("Error fetching summary:", err);
+            error = "Failed to load summary data.";
+        } finally {
+            isLoading = false;
+        }
+    }
 
     onMount(async () => {
+        fetchSummary();
     });
 </script>
 
@@ -60,15 +92,15 @@
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
-                    <h3>Total Customers</h3>
-                    <p>{stats.totalCustomers}</p>
+                    <h3>Total Users</h3>
+                    <p>{summaryData.total_users}</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><img src="{base}/images/Truck_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
-                    <h3>Active Trailers</h3>
-                    <p>{stats.activeTrailers}</p>
+                    <h3>Total Trailers</h3>
+                    <p>{summaryData.total_trailers}</p>
                 </div>
             </div>
 
@@ -76,14 +108,28 @@
                 <div class="stat-icon"><img src="{base}/images/Moving_truck.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Deliveries</h3>
-                    <p>{stats.totalDeliveries}</p>
+                    <p>{summaryData.total_deliveries}</p>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
-                    <h3>Prevented Cross-Drops</h3>
-                    <p>{stats.preventedCrossDrops}</p>
+                    <h3>Total Cross-Drops</h3>
+                    <p>{summaryData.total_cross_drops}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><img src="{base}/images/Gas_station_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-content">
+                    <h3>Total Locations</h3>
+                    <p>{summaryData.total_locations}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-content">
+                    <h3>Total Products</h3>
+                    <p>{summaryData.total_products}</p>
                 </div>
             </div>
         </div>
@@ -236,9 +282,19 @@
     padding-bottom:2vh;
 }
 .logout-btn {
-    font-size: 1rem;
-    border-radius: 15px;
+    background: #014B96;
+    color: white;
+    border: white 1px solid;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-family: 'Mulish', sans-serif;
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
+.logout-btn:hover {
+    background: #013b77;
+}
+
 @media (max-width: 1000px) {
     .main-container {
         padding: 1rem;

@@ -86,7 +86,8 @@
                 <a class="top-header-link" href="https://berrys.com">berrys.com</a>
             </div>
             <div class="header">
-                 <button class="logout-btn" on:click={handleLogout} > Logout</button>
+                <button class="header-btn" on:click={goto(`${base}/admin`)}> Dashboard </button>
+                <button class="header-btn" on:click={handleLogout} > Logout</button>
             </div>
         </div>
     </header>
@@ -126,7 +127,7 @@
            <td>{row.company_name}</td>
            <td>{row.email}</td>
            <td>{row.phone_number}</td>
-           <td>{row.is_admin}</td>
+           <td>{row.is_admin ? "Yes" : "No"}</td>
            <td>{formatEpochToDisplay(row.last_login)}</td>
         </tr>
         {/each}
@@ -150,9 +151,9 @@
 }
 .dashboard-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    justify-content: space-between;
 }
 .dashboard-header h1 {
     font-family: 'Mulish', sans-serif;
@@ -215,4 +216,20 @@
     transition: all 0.3s ease;
     cursor: pointer;
   }
+  .header-btn {
+    background: #014B96;
+    color: white;
+    border: white 1px solid;
+    padding: 0.75rem 1.5rem;
+    border-radius: 5px;
+    font-family: 'Mulish', sans-serif;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+.header-btn:hover {
+    background: #013b77;
+}
+.header-btn:last-child{
+  margin-left: 2vw;
+}
 </style>
