@@ -1,1 +1,0 @@
-import{ai as o,af as n,t as c,u}from"./COAlzTlh.js";function a(t){throw new Error("https://svelte.dev/e/lifecycle_outside_component")}function f(t){n===null&&a(),c&&n.l!==null?l(n).m.push(t):o(()=>{const e=u(t);if(typeof e=="function")return e})}function l(t){var e=t.l;return e.u??(e.u={a:[],b:[],m:[]})}export{f as o};

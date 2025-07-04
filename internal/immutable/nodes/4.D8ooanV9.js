@@ -1,1 +1,0 @@
-import{t as o,a}from"../chunks/Ddf-pde4.js";import"../chunks/CUbRwKUw.js";const s=Object.freeze(Object.defineProperty({__proto__:null},Symbol.toStringTag,{value:"Module"}));var r=o("<h1>this page does not exist yet.</h1>");function i(e){var t=r();a(e,t)}export{i as component,s as universal};
