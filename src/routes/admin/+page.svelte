@@ -24,17 +24,14 @@
     async function fetchSummary() {
         isLoading = true;
         error = null;
-        const token = localStorage.getItem('jwt_token');
         const isAdmin = localStorage.getItem('is_admin') === 'true';
-        if(!isAdmin || !token)  {         
+        if(!isAdmin )  {         
             await goto(`${base}/login?authMessage=${encodeURIComponent('Access Denied. Please log in as an administrator.')}`);
             return; 
         }
         try{
             const response = await fetch(`${PUBLIC_API_BASE_URL}/api/admin/summary` , {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials:'include'
             });
             if(!response.ok) {
                 throw new Error(`Error status: ${response.status}`);

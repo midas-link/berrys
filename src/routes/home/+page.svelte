@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { base } from "$app/paths";
+  import { goto } from '$app/navigation';
 
   let leftContainer;
   let middleContainer;
@@ -72,11 +73,11 @@
   function navigateBasedOnImage(imageSrc) {
     if (!imageSrc) return;
     if (imageSrc.includes("Truck_graphic")) {
-      window.location.href = `${base}/vehicle-logging`;
+    goto(`${base}/vehicle-logging`);
     } else if (imageSrc.includes("Cross-drop")) {
-      window.location.href = `${base}/cross-drops`;
+      goto(`${base}/cross-drops`);
     } else if (imageSrc.includes("Gas_station_graphic")) {
-      window.location.href = `${base}/site-data`;
+      goto(`${base}/site-data`);
     }
   }
 

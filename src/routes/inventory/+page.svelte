@@ -32,9 +32,11 @@
   }
   let rows = [];
   onMount(async () => {
-    //const res = await fetch(`${base}/table_data/inventory_data.json`);
     try {
-      const res = await fetch(`${PUBLIC_API_BASE_URL}/api/Inventory/`);
+      const res = await fetch(`${PUBLIC_API_BASE_URL}/api/Inventory/`, {
+        method:'GET',
+        credentials:'include'
+      });
       if (!res.ok) {
         const errorData = await res
           .json()

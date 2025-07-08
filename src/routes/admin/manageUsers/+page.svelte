@@ -18,23 +18,17 @@
         hour12: false,
      }).replace(/\//g,"-");
   }
+  async function handleLogout(){
+        await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
+    }
     async function fetchUsers() {
         isLoading = true;
         error = null; 
 
-        const token = localStorage.getItem('jwt_token');
-        const isAdmin = localStorage.getItem('is_admin') === 'true';
-
-        if (!token || !isAdmin) {
-            await goto(`${base}/login?authMessage=${encodeURIComponent('Access Denied. Please log in as an administrator.')}`);
-            return; 
-        }
 
         try {
             const response = await fetch(`${PUBLIC_API_BASE_URL}/api/admin/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+               credentials:'include'
             });
 
             if (!response.ok) {

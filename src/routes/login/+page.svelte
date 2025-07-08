@@ -21,6 +21,8 @@
         headers: {
           "Content-Type": "application/json",
         },
+
+        credentials:'include',
         body: JSON.stringify({
           email: email,
           password: password,
@@ -33,7 +35,6 @@
         loginMessage = data.message || "Logged in successfully.";
         isLoginError = false;
         showPopup = true;
-        localStorage.setItem('jwt_token',  data.token);
         localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
         const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
 

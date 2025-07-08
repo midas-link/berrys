@@ -34,7 +34,10 @@
       eventsLoading = true;
       eventsError = null;
       console.log("Fetching prevented delivery events from API...");
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Cross_Drops`);
+      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Cross_Drops`, {
+        method:'GET',
+        credentials:'include'
+      });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
