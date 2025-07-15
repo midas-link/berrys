@@ -42,9 +42,16 @@
           goto(redirectPath);
         }, 2000);
       } else {
-        loginMessage =
-          data.error ||
-          `Login failed. Status: ${response.status}. Please try again.`;
+        if(response.status === 429) {
+          loginMessage = data.error ;
+        } else if( response.status === 400) {
+          loginMessage = data.error.map(err => err.msg).join('\n & ');
+        } else if(response.status === 401)  {
+          loginMessage = data.error;
+        } else {
+          loginMessage =  `An unexpected login error occured. Status: ${response.status}.`;
+        }
+
         isLoginError = true;
       }
     } catch (error) {
@@ -169,7 +176,6 @@
     font-size: 0.875rem;
     color: #848484;
   }
-  /* Reset and Base Styles */
   * {
     margin: 0;
     padding: 0;
@@ -183,7 +189,6 @@
     line-height: 1.6;
     color: var(--text-color);
     background-color: var(--background-color);
-
     background-size: cover;
     background-repeat: no-repeat;
     max-height: 100vh;

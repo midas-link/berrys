@@ -1,7 +1,50 @@
 <script>
   import { onMount } from "svelte";
   import { base } from "$app/paths";
+  import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  export let data ; 
 
+  let changePasswordMessage = "";
+  let changePasswordError = false;
+  let newPassword = "";
+  let confirmPassword ="";
+  async function handlePasswordChange() {
+    changePasswordMessage = "";
+    changePasswordError = false;
+    try {
+      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/changePassword`,{
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          newPassword: newPassword,
+          confirmPassword: confirmPassword,
+        }),
+      });
+      const data = await response.json();
+      if(response.ok) {
+        changePasswordError = false;
+        changePasswordMessage = data.message || "Password changed successfully!";
+      }
+      else { 
+        if(response.status === 400  && Array.isArray(data.error)) changePasswordMessage = data.error.map(err=>err.msg).join(' & ');
+        else if( typeof data.error ==='string') {
+          changePasswordMessage = data.error;
+        }
+        else {
+          changePasswordMessage = `An unexpected error has occured. Status: ${response.status}.`;
+        }
+        changePasswordError = true;
+      }
+    } catch(err) {
+      console.error('Client-side error:', err);
+      changePasswordError = true;
+    }
+    newPassword = "";
+    confirmPassword ="";
+  }
   function setupMobileMenu() {
     const hamburger = document.getElementById("hamburger-menu");
     const sidebar = document.getElementById("mobile-sidebar");
@@ -105,28 +148,32 @@
     <div class="profile-details">
       <div class="header-profile">
         <img src="images/NicePng_gray.png" alt="profile-logo" />
-        <div class="header-profile-name">Darren Keane</div>
+        <div class="header-profile-name">{data.user.firstName} {data.user.lastName}</div>
       </div>
       <div class="header-company">
         <img
           class="company-logo"
-          src="images/circle-k-logo.png"
-          alt="company-logo"
+          src={data.user.companyImage ? data.user.companyImage : `${base}/images/circle-k-logo.png`}
+                    alt="company-logo"
         />
         <div class="header-role">(Area Manager)</div>
       </div>
     </div>
     <div class="form-container">
-      <form action="">
+      <form on:submit|preventDefault={handlePasswordChange}>
+        {#if changePasswordMessage}
+          <p style="color: {changePasswordError ? 'red' : 'green'};">{changePasswordMessage}</p>
+        {/if}
         <div class="form-row">
           <label for="change-password">Change Password:</label>
-          <input type="password" id="change-password" name="change-password" />
+          <input type="password" bind:value={newPassword} id="change-password" name="change-password" />
         </div>
         <div class="form-row">
           <label for="confirm-password">Confirm Password:</label>
           <input
             type="password"
             id="confirm-password"
+            bind:value={confirmPassword}
             name="confirm-password"
           />
         </div>

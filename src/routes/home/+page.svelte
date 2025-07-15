@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { base } from "$app/paths";
   import { goto } from '$app/navigation';
-
+  import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  export let data ; 
   let leftContainer;
   let middleContainer;
   let rightContainer;
@@ -16,7 +17,22 @@
   let touchStartX = 0;
   let touchEndX = 0;
   const swipeThreshold = 50;
-
+  async function handleLogout(){
+        try {
+        const response = await fetch(`${PUBLIC_API_BASE_URL}/api/logout` , {
+            method: 'POST',
+            credentials:'include'
+        });
+        if(!response.ok) {
+            console.warn(`Logout failed, Error status: ${response.status}`);
+        }
+    } catch (err) {
+        console.log("Error logging out",err );
+    } finally{
+        localStorage.removeItem('is_admin');
+        await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
+    }
+    }
   function swapContent(container1, container2) {
     if (!container1 || !container2) return;
     container1.classList.add("transitioning");
@@ -181,7 +197,6 @@
     dropdownMenu = document.getElementById("dropdownMenu");
     subHeaderProfile = document.querySelector(".sub-header-profile");
     mainSwipeContainer = document.querySelector(".main-container");
-
     const clickMoveLeft = () => moveContainers("left");
     const clickMoveRight = () => moveContainers("right");
 
@@ -290,20 +305,20 @@
           src="{base}/images/NicePng_gray.png"
           alt="profile-logo"
         />
-        <div class="sub-header-profile-name">Darren Keane</div>
+        <div class="sub-header-profile-name"> {data.user.firstName} {data.user.lastName} </div>
       </div>
       <div class="company-column">
         <img
           class="company-logo"
-          src="{base}/images/circle-k-logo.png"
-          alt="company-logo"
+          src={data.user.companyImage ? data.user.companyImage : `${base}/images/circle-k-logo.png`}
+                    alt="company-logo"
         />
         <div class="sub-header-role">( Area Manager )</div>
       </div>
     </div>
   </div>
   <div class="dropdown-menu" id="dropdownMenu">
-    <a href="{base}/login" id="logout">Logout</a>
+    <button on:click={handleLogout} id="logout">Logout</button>
     <a href="{base}/manageAcc">Manage Account</a>
   </div>
 </div>
@@ -605,6 +620,16 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     z-index: 10;
   }
+  .dropdown-menu button {
+    background-color: #014b96;
+    display: block;
+    padding: 2vh 3vw 2vh 3vw;
+    font-family: "Mulish", sans-serif;
+    font-size: 1rem;
+    color: #ffffff;
+    width:100%;
+    text-decoration: underline;
+  }
   .dropdown-menu a {
     display: block;
     padding: 2vh 3vw 2vh 3vw;
@@ -613,8 +638,10 @@
     color: #ffffff;
     text-decoration: underline;
   }
+  .dropdown-menu button:hover,
   .dropdown-menu a:hover {
     background-color: #0961b9;
+    cursor: pointer;
   }
   .sub-header-profile {
     cursor: pointer;

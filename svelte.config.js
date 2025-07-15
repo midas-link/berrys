@@ -11,7 +11,7 @@ const config = {
     paths: {
       base: '/berrys',
     },
-    appDir: 'internal', // Changes the _app directory name to avoid GitHub Pages issues
+    appDir: 'internal', 
   },
 };
 

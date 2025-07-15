@@ -3,24 +3,25 @@
 
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
-
+export const prerender = false;
 /** @type {import('./$types').LayoutLoad} */
-export async function load({ data }) {
+export async function load({url, data }) {
+  const dataFromParent = data; 
   if (browser) {
     const storedPath = sessionStorage.getItem('spaPath');
     if (storedPath) {
       sessionStorage.removeItem('spaPath');
-      const basePath = '/berrys';
+      const basePath = url.base;
       const cleanPath = storedPath.startsWith(basePath) 
         ? storedPath.substring(basePath.length) || '/'
         : storedPath;
-      if (window.location.pathname === basePath + '/' || window.location.pathname === '/') {
+      if (url.pathname === basePath + '/' || url.pathname === '/') {
+        console.log(cleanPath);
         goto(cleanPath);
       }
     }
   }
-  const userFromLayoutServer = data && data.user ? data.user : null;
   return {
-    user: userFromLayoutServer
+    user: dataFromParent && dataFromParent.user ? dataFromParent.user : null
   };
 }

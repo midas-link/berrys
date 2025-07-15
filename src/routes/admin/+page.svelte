@@ -4,6 +4,8 @@
     import { onMount } from 'svelte';
     import { PUBLIC_API_BASE_URL } from "$env/static/public";
     import { page } from '$app/stores';
+    export let data ; 
+    console.log("user data is   " ,data)
     $: authMessage = $page.url.searchParams.get('authMessage') || '';    
     let stats = {
         totalCustomers: 50,
@@ -17,9 +19,20 @@
     let error = null;
     let recentActivity = [];
     async function handleLogout(){
-        localStorage.removeItem('jwt_token');
+        try {
+        const response = await fetch(`${PUBLIC_API_BASE_URL}/api/logout` , {
+            method: 'POST',
+            credentials:'include'
+        });
+        if(!response.ok) {
+            console.warn(`Logout failed, Error status: ${response.status}`);
+        }
+    } catch (err) {
+        console.log("Error logging out",err );
+    } finally{
         localStorage.removeItem('is_admin');
         await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
+    }
     }
     async function fetchSummary() {
         isLoading = true;

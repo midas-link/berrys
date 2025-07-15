@@ -107,7 +107,7 @@
 
   function handleBreadcrumbNavigation() {
     if (previousURL) {
-      goto(`${base}${previousURL}`);
+      goto(`${previousURL}`);
     } else {
       goto(`${base}/vehicle-logging`);
     }
