@@ -1,0 +1,1 @@
+import{O as r,a3 as i,B as c}from"./CERrcAZ7.js";function f(s,a,e){var t=r(s,a);t&&t.set&&(s[a]=e,i(()=>{s[a]=null}))}function o(s,a){var l;var e=(l=s.$$events)==null?void 0:l[a.type],t=c(e)?e.slice():e==null?[]:[e];for(var n of t)n.call(this,a)}export{o as a,f as b};
