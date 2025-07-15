@@ -2,7 +2,7 @@
 	"name": "berrys",
 	"private": true,
 	"version": "0.0.1",
-	"homepage": "https://midas-link.github.io/berrys/login",
+	"homepage": "https://midas-link.github.io/berrys/",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -13,7 +13,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",
-		"@sveltejs/kit": "^2.20.7",
+		"@sveltejs/kit": "^2.23.0",
 		"gh-pages": "^6.3.0",
 		"svelte": "^5.0.0",
 		"vite": "^6.3.3"

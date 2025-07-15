@@ -1,12 +1,27 @@
+// src/routes/+layout.js
 
+import { goto } from '$app/navigation';
+import { browser } from '$app/environment';
+import { onMount } from 'svelte'; // <-- ADD THIS IMPORT
 
+export const prerender = false;
 
-import { base } from '$app/paths';
+export async function load({ url, data }) {
+    if (browser) {
+        const storedPath = sessionStorage.getItem('spaPath');
+        if (storedPath) {
+            sessionStorage.removeItem('spaPath');
+            const basePath = url.base;
+            const cleanPath = storedPath.startsWith(basePath)
+                ? storedPath.substring(basePath.length) || '/'
+                : storedPath;
+            if (url.pathname === basePath + '/' || url.pathname === '/') {
+                goto(cleanPath);
+            }
+        }
+    }
 
-export const prerender = true;
-/** @type {import('./$types').LayoutLoad} */
-export async function load({ data }) {
-  return {
-    user: data && data.user ? data.user : null
-  };
+    return {
+        user: data && data.user ? data.user : null
+    };
 }
