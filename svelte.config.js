@@ -4,16 +4,14 @@ import adapter from '@sveltejs/adapter-static';
 const config = {
   kit: {
     adapter: adapter({
-      fallback: 'index.html', // Important for routing to work on GitHub Pages
+      fallback: '404.html', // Important for routing to work on GitHub Pages
       assets: 'build', // Set the assets directory
       pages: 'build', // Set the pages directory
-      trailingSlash: 'always',
     }),
     paths: {
       base: process.env.NODE_ENV === 'production' ? '/berrys' : '',
     },
     appDir: 'internal', 
-
   },
 };
 
