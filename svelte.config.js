@@ -9,7 +9,7 @@ const config = {
       pages: 'build', // Set the pages directory
     }),
     paths: {
-      base: '/berrys',
+      base: '/berrys/',
     },
     appDir: 'internal', 
   },
