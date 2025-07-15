@@ -1,0 +1,1 @@
+import"../chunks/CWj6FrbW.js";import"../chunks/B44Ua88C.js";import{t as o,a}from"../chunks/CzOC0KzF.js";const s=Object.freeze(Object.defineProperty({__proto__:null},Symbol.toStringTag,{value:"Module"}));var r=o("<h1>this page does not exist yet.</h1>");function l(e){var t=r();a(e,t)}export{l as component,s as universal};
