@@ -25,7 +25,7 @@ export async function load(event) {
             return { user: null };
         } else {
             console.log('No token and not on a public page, redirecting to login.');
-            throw redirect(302, `${basePath}/login?authMessage=Please%20log%20in%20to%20access%20this%20page.`);
+            throw redirect(302, `${basePath}/login`);
         }
     }
     try{
@@ -49,7 +49,7 @@ export async function load(event) {
         throw redirect(302, redirectTo);
     }
     if (!user && !isPublicPage) { 
-        throw redirect(302, `${basePath}/login?authMessage=Please%20log%20in%20to%20access%20this%20page.`);
+        throw redirect(302, `${basePath}/login`);
     }
     return {
         user: user ? { userId: user.userId, email: user.email, isAdmin: user.isAdmin, firstName: user.firstName, lastName: user.lastName, companyImage:  user.companyImage } : null
