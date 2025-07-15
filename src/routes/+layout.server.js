@@ -1,10 +1,11 @@
 import { redirect } from "@sveltejs/kit";
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '$env/static/private';
+import { base } from '$app/paths';
 export async function load(event) {
     console.log('--- LAYOUT LOAD DEBUG START ---');
     console.log('Current Pathname:', event.url.pathname);
-    const basePath = "/berrys"; 
+    const basePath = base; 
     console.log('Base Path:', basePath);
     const publicRootPaths = [
         `${basePath}/login`,
