@@ -1,18 +1,10 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-auto';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   kit: {
-    adapter: adapter({
-      fallback: '404.html', // Important for routing to work on GitHub Pages
-      assets: 'build', // Set the assets directory
-      pages: 'build', // Set the pages directory
-    }),
-    paths: {
-      base: process.env.NODE_ENV === 'production' ? '/berrys' : '',
-    },
-    appDir: 'internal', 
-  },
+    adapter: adapter()
+  }
 };
 
 export default config;
