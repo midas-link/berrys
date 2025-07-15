@@ -7,11 +7,13 @@ const config = {
       fallback: 'index.html', // Important for routing to work on GitHub Pages
       assets: 'build', // Set the assets directory
       pages: 'build', // Set the pages directory
+      trailingSlash: 'always',
     }),
     paths: {
       base: process.env.NODE_ENV === 'production' ? '/berrys' : '',
     },
     appDir: 'internal', 
+
   },
 };
 
