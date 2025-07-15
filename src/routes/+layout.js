@@ -2,7 +2,6 @@
 
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
-import { onMount } from 'svelte'; // <-- ADD THIS IMPORT
 
 export const prerender = false;
 

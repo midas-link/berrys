@@ -9,7 +9,7 @@ const config = {
       pages: 'build', // Set the pages directory
     }),
     paths: {
-      base: process.env.NODE_ENV === 'production' ? '/berrys' : ''
+      base: process.env.NODE_ENV === 'production' ? '/berrys' : '',
     },
     appDir: 'internal', 
   },
