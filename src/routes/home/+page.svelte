@@ -19,7 +19,7 @@
   const swipeThreshold = 50;
   async function handleLogout(){
         try {
-        const response = await fetch(`${PUBLIC_API_BASE_URL}/api/logout` , {
+        const response = await fetch(`/api/logout` , {
             method: 'POST',
             credentials:'include'
         });

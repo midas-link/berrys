@@ -12,7 +12,7 @@
     changePasswordMessage = "";
     changePasswordError = false;
     try {
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/changePassword`,{
+      const response = await fetch(`/api/changePassword`,{
         method: 'POST',
         headers: {
           "Content-Type": "application/json",
