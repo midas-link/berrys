@@ -13,6 +13,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.8",
+		"@sveltejs/adapter-vercel": "^5.7.2",
 		"@sveltejs/kit": "^2.23.0",
 		"gh-pages": "^6.3.0",
 		"svelte": "^5.0.0",
@@ -20,7 +21,6 @@
 	},
 	"dependencies": {
 		"@sveltejs/adapter-auto": "^6.0.1",
-		"@sveltejs/adapter-vercel": "^5.7.2",
 		"jsonwebtoken": "^9.0.2"
 	}
 }

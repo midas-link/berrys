@@ -1,11 +1,5 @@
-// src/routes/+layout.js
-
 import { goto } from '$app/navigation';
 import { browser } from '$app/environment';
-export const trailingSlash = 'always';
-export const prerender = true;
-export const ssr = false;
-
 export async function load({ url, data }) {
     if (browser) {
         const storedPath = sessionStorage.getItem('spaPath');

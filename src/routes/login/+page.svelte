@@ -36,6 +36,7 @@
         isLoginError = false;
         showPopup = true;
         localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
+        console.log("the base after logging in is : ", base);
         const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
 
         setTimeout(() => {
