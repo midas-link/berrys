@@ -27,7 +27,7 @@
 
 
         try {
-            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/admin/users`, {
+            const response = await fetch(`/api/admin/users`, {
                credentials:'include'
             });
 

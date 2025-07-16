@@ -43,7 +43,7 @@
             return; 
         }
         try{
-            const response = await fetch(`${PUBLIC_API_BASE_URL}/api/admin/summary` , {
+            const response = await fetch(`/api/admin/summary` , {
                 credentials:'include'
             });
             if(!response.ok) {
