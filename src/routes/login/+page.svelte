@@ -16,7 +16,7 @@
     showPopup = false;
 
     try {
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/login`, {
+      const response = await fetch(`/api/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
