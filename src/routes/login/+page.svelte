@@ -7,6 +7,7 @@
   let email = "";
   let password = "";
   let loginMessage = "";
+  let rememberMe = false;
   let isLoginError = false;
   let showPopup = false;
   $: loginErrorMessage = $page.url.searchParams.get('authMessage') || '';
@@ -26,6 +27,7 @@
         body: JSON.stringify({
           email: email,
           password: password,
+          rememberMe: rememberMe
         }),
       });
 
@@ -121,7 +123,7 @@
           </div>
           <div class="form-group below-password-container">
             <label class="checkbox-container">
-              <input type="checkbox" name="remember" />
+              <input type="checkbox" name="rememberMe" id="rememberMe" bind:checked={rememberMe} />
               <span class="checkmark"></span>
               Remember me
             </label>
