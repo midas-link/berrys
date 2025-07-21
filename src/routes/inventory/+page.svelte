@@ -4,6 +4,28 @@
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   let dataLoading = true;
   let dataLoadingError = null;
+  async function fetchData() {
+    try {
+      const res = await fetch(`/api/Inventory/`, {
+        method:'GET',
+        credentials:'include'
+      });
+      if (!res.ok) {
+        const errorData = await res
+          .json()
+          .catch(() => ({ message: "Unknown error" }));
+        throw new Error(
+          `HTTP error! Status: ${res.status}. Message: ${errorData.error || res.statusText}`
+        );
+      }
+      rows = await res.json();
+    } catch (error) {
+      console.error("Failed to load inventory data", error);
+      dataLoadingError = `Failed to load data : ${error.message || error}`;
+    } finally {
+      dataLoading = false;
+    }
+  }
   function setupMobileMenu() {
     const hamburger = document.getElementById("hamburger-menu");
     const sidebar = document.getElementById("mobile-sidebar");
@@ -32,26 +54,7 @@
   }
   let rows = [];
   onMount(async () => {
-    try {
-      const res = await fetch(`/api/Inventory/`, {
-        method:'GET',
-        credentials:'include'
-      });
-      if (!res.ok) {
-        const errorData = await res
-          .json()
-          .catch(() => ({ message: "Unknown error" }));
-        throw new Error(
-          `HTTP error! Status: ${res.status}. Message: ${errorData.error || res.statusText}`
-        );
-      }
-      rows = await res.json();
-    } catch (error) {
-      console.error("Failed to load inventory data", error);
-      dataLoadingError = `Failed to load data : ${error.message || error}`;
-    } finally {
-      dataLoading = false;
-    }
+    await fetchData();
     setupMobileMenu();
   });
 </script>
