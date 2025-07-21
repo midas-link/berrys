@@ -49,7 +49,7 @@
       eventsLoading = true;
       eventsError = null;
       console.log("Fetching prevented delivery events from API...");
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logging`,{
+      const response = await fetch(`/api/Vehicle_Logging`,{
         method:'GET',
         credentials:'include'
       }

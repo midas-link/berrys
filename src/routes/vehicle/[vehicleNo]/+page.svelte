@@ -277,7 +277,7 @@
       timelineLoading = true;
       timelineError = null;
       console.log(`Fetching timeline data for trailer: ${trailer} from API...`);
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logs/${trailer}`, {
+      const response = await fetch(`/api/Vehicle_Logs/${trailer}`, {
         method:'GET',
         credentials:'include'
       }

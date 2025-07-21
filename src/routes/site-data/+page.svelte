@@ -82,7 +82,7 @@
       eventsLoading = true;
       eventsError = null;
       console.log("Fetching prevented delivery events from API...");
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Site_Data`, {
+      const response = await fetch(`/api/Site_Data`, {
         method: 'GET',
         credentials:'include'
       });
@@ -95,7 +95,6 @@
       allEvents = data;
       filteredEvents = [...allEvents];
 
-      // Extract unique states and cities
       uniqueStates = [
         ...new Set(
           allEvents.map((row) => row.State).filter((s) => s && s.trim() !== "")

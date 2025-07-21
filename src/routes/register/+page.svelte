@@ -14,7 +14,7 @@
     message = "";
     isError = false;
     try {
-      const response = await fetch(`${PUBLIC_API_BASE_URL}/api/register`, {
+      const response = await fetch(`/api/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

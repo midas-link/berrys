@@ -33,7 +33,7 @@
   let rows = [];
   onMount(async () => {
     try {
-      const res = await fetch(`${PUBLIC_API_BASE_URL}/api/Inventory/`, {
+      const res = await fetch(`/api/Inventory/`, {
         method:'GET',
         credentials:'include'
       });
