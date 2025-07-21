@@ -6,7 +6,7 @@
   let dataLoadingError = null;
   async function fetchData() {
     try {
-      const res = await fetch(`/api/Inventory/`, {
+      const res = await fetch(`/api/Inventory`, {
         method:'GET',
         credentials:'include'
       });
