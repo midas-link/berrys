@@ -37,7 +37,6 @@
         isLoginError = false;
         showPopup = true;
         localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
-        console.log("the base after logging in is : ", base);
         const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
 
         setTimeout(() => {
@@ -64,7 +63,11 @@
     }
   }
 
-  onMount(() => {});
+  onMount(() => {
+    setTimeout(()=> {
+      loginErrorMessage = '';
+    },1000*10)
+  });
 </script>
 
 <svelte:head>

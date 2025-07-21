@@ -4,6 +4,7 @@
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   let dataLoading = true;
   let dataLoadingError = null;
+  export let data ; 
   async function fetchData() {
     try {
       const res = await fetch(`/api/Inventory`, {
@@ -134,13 +135,13 @@
     <div class="profile-details">
       <div class="header-profile">
         <img src="{base}/images/NicePng_gray.png" alt="profile-logo" />
-        <div class="header-profile-name">Darren Keane</div>
+        <div class="header-profile-name">{data.user.firstName} {data.user.lastName} </div>
       </div>
       <div class="header-company">
         <img
           class="company-logo"
-          src="{base}/images/circle-k-logo.png"
-          alt="company-logo"
+          src={data.user.companyImage ? data.user.companyImage : `${base}/images/circle-k-logo.png`}
+                    alt="company-logo"
         />
         <div class="header-role">(Area Manager)</div>
       </div>

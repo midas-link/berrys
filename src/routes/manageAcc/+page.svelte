@@ -3,7 +3,7 @@
   import { base } from "$app/paths";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   export let data ; 
-
+  let currentPassword = "";
   let changePasswordMessage = "";
   let changePasswordError = false;
   let newPassword = "";
@@ -19,6 +19,7 @@
         },
         credentials: 'include',
         body: JSON.stringify({
+          currentPassword: currentPassword,
           newPassword: newPassword,
           confirmPassword: confirmPassword,
         }),
@@ -42,6 +43,7 @@
       console.error('Client-side error:', err);
       changePasswordError = true;
     }
+    currentPassword= "";
     newPassword = "";
     confirmPassword ="";
   }
@@ -162,22 +164,34 @@
     <div class="form-container">
       <form on:submit|preventDefault={handlePasswordChange}>
         {#if changePasswordMessage}
-          <p style="color: {changePasswordError ? 'red' : 'green'};">{changePasswordMessage}</p>
+          <p
+            class="message"
+            style="color: {changePasswordError ? 'red' : 'green'};"
+            >{changePasswordMessage}</p
+          >
         {/if}
-        <div class="form-row">
-          <label for="change-password">Change Password:</label>
-          <input type="password" bind:value={newPassword} id="change-password" name="change-password" />
-        </div>
-        <div class="form-row">
-          <label for="confirm-password">Confirm Password:</label>
-          <input
-            type="password"
-            id="confirm-password"
-            bind:value={confirmPassword}
-            name="confirm-password"
-          />
-        </div>
-        <button type="submit">Reset</button>
+        <label for="current-password">Current Password:</label>
+        <input
+          type="password"
+          bind:value={currentPassword}
+          id="current-password"
+          name="current-password"
+        />
+        <label for="new-password">New Password:</label>
+        <input
+          type="password"
+          bind:value={newPassword}
+          id="new-password"
+          name="new-password"
+        />
+        <label for="confirm-password">Confirm Password:</label>
+        <input
+          type="password"
+          id="confirm-password"
+          bind:value={confirmPassword}
+          name="confirm-password"
+        />
+        <button type="submit">Change Password</button>
       </form>
     </div>
   </div>
@@ -199,7 +213,7 @@
     box-sizing: border-box;
   }
   main {
-    flex: 1; /* Allow main to grow and fill the space */
+    flex: 1; 
     background-color: #f9bc39;
     flex-direction: column;
     margin-bottom: 5vh;
@@ -349,9 +363,9 @@
   }
   .profile-details {
     display: flex;
-    flex-direction: row; /* Align children in a row */
-    justify-content: space-between; /* Optional: space them out evenly */
-    align-items: center; /* Optional: center them vertically */
+    flex-direction: row; 
+    justify-content: space-between; 
+    align-items: center; 
   }
   .form-container {
     border-radius: 25px;
@@ -372,18 +386,19 @@
     border: 0px;
     background-color: #eaf3fc;
   }
-  .form-row {
-    display: flex;
-    align-items: center; /* Align items vertically centered */
-    margin-bottom: 4vh; /* Add some space between rows */
-  }
-  .form-row label {
-    margin-right: 3vh; /* Add space between label and input */
-  }
   .form-container form {
-    display: flex;
-    flex-direction: column; /* Stack children vertically */
-    align-items: center; /* Center children horizontally */
+    display: grid;
+    grid-template-columns: max-content auto;
+    align-items: center;
+    gap: 1rem 2rem;
+  }
+  .form-container form label {
+    text-align: right;
+  }
+  .form-container form .message,
+  .form-container form button {
+    grid-column: 1 / -1;
+    justify-self: center;
   }
   .form-container button {
     background-color: #014b96;
