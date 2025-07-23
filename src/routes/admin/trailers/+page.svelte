@@ -4,14 +4,11 @@
     import { onMount } from 'svelte';
     import { PUBLIC_API_BASE_URL } from "$env/static/public";
     import { page } from '$app/stores';
-    let users = [];
+    let trailers = [];
     let filtered = false;
-    let filteredUsers =[];
-    let selectedUserIds = [];
+    let filteredTrailers =[];
     let error = null;
     let isLoading = true;
-    let verificationMessage = '';
-    let verificationError = false;
     function formatEpochToDisplay(timestamp) {
     const date = new Date(timestamp);
      return date.toLocaleString("en-GB", {
@@ -23,62 +20,29 @@
         hour12: false,
      }).replace(/\//g,"-");
   }
-  function searchUser(searchedUser) {
-    filteredUsers = [];
-    if(searchedUser.length===0) 
+  function searchTrailer(searchedTrailer) {
+    filteredTrailers = [];
+    if(searchedTrailer.length===0) 
       filtered= false;
-    users.forEach(element => {
-      if(element.email.includes(searchedUser))
+    trailers.forEach(element => {
+      if(element.trailer_number.includes(searchedTrailer))
         {
-        filteredUsers.push(element);
+        filteredTrailers.push(element);
         filtered= true;
         }
     });
-    console.log(filteredUsers);
-  }
-  async function handleVerifyUsers() {
-    if(selectedUserIds.length ===0) {
-      alert('Please select at least on user to verify.');
-      return;
-    }
-    try{
-      const response = await fetch('/api/admin/verifyUsers', {
-        method: "POST",
-        headers: {
-          "Content-Type":"application/json",
-        },
-        credentials:'include',
-        body:JSON.stringify({
-          selectedUserIds: selectedUserIds
-        }),
-      });
-      const data = await response.json();
-      if(response.ok) {
-        selectedUserIds = [];
-        verificationError = false;
-        verificationMessage = data.message || "Users verified successfully!";
-        filteredUsers = [];
-        await fetchUsers(); 
-      }
-      else {
-        verificationError = true;
-        verificationMessage = data.error || "Verification failed.";
-      }
-    } catch(err){
-      verificationError = true;
-      verificationMessage = err.message || "Client-side error occurred.";
-    }
+    console.log(filteredTrailers);
   }
   async function handleLogout(){
         await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
     }
-    async function fetchUsers() {
+    async function fetchTrailers() {
         isLoading = true;
         error = null; 
 
 
         try {
-            const response = await fetch(`/api/admin/users`, {
+            const response = await fetch(`/api/admin/trailers`, {
                credentials:'include'
             });
 
@@ -95,18 +59,18 @@
                 }
             }
 
-            users = await response.json(); 
-            console.log('Admin users loaded:', users); 
+            trailers = await response.json(); 
+            console.log('Admin trailers loaded:', trailers); 
 
         } catch (err) {
-            console.error('Error fetching admin users:', err);
-            error = err.message || 'Failed to load users. Please try again.';
+            console.error('Error fetching admin trailers:', err);
+            error = err.message || 'Failed to load trailers. Please try again.';
         } finally {
             isLoading = false; 
         }
     }
     onMount(async () => {
-        await fetchUsers();
+        await fetchTrailers();
     });
 </script>
 <svelte:head>
@@ -123,7 +87,7 @@
     <link href='https://fonts.googleapis.com/css?family=Mulish' rel='stylesheet'>
     <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
     <link rel="stylesheet" href="{base}/css/styles.css">
-    <title>Manage Users</title>
+    <title>Trailers</title>
 </svelte:head>
     <header>
         <div class="header-container">
@@ -139,59 +103,39 @@
 
     <div class="main-container">
         <div class="dashboard-header">
-            <h1>Manage users</h1>
+            <h1>Trailers</h1>
             <div class="date-time">{new Date().toLocaleString()}</div>
-            <input type="text" placeholder="Search Users" class="search-bar" on:keydown={(e) => {if(e.key==='Enter'){ searchUser(e.target.value)} }}> 
+            <input type="text" placeholder="Search Trailers" class="search-bar" on:keydown={(e) => {if(e.key==='Enter'){ searchTrailer(e.target.value)} }}> 
         </div>
-        {#if verificationMessage}
-          <span style="color: {verificationError ? 'red' : 'green'};"> {verificationMessage} </span>
-        {/if}
         <div class="data-container">
-          <form on:submit|preventDefault={handleVerifyUsers}>    
             <table class="desktop-view">
               <thead>
                 <tr>
-                  <th>User ID</th>
-                  <th>Full Name</th>
-                  <th>Title </th>
-                  <th>Company Name</th>
-                  <th>Email</th>
-                  <th>Phone Number</th>
-                  <th>Is Admin</th>
-                  <th>Last Login</th>
-                  <th>Verification Status</th>
-                  <th>Verify user</th>
+                    <th>Trailer ID</th>
+                    <th>Trailer Number</th>
+                    <th>Date Added</th>
                 </tr>
               </thead>
               <tbody>
     {#if isLoading}
     <tr>
-        <td> Loading users</td>
+        <td> Loading Trailers</td>
     </tr>
     {:else if error}
     <tr>
         <td>{error}</td>
     </tr>
-    {:else if (filtered ? filteredUsers : users).length > 0}
-    {#each (filtered ? filteredUsers : users) as row, index}
+    {:else if (filtered ? filteredTrailers : trailers).length > 0}
+    {#each (filtered ? filteredTrailers : trailers) as row, index}
         <tr>
-           <td>{row.user_id}</td> 
-           <td>{row.first_name} {row.last_name}</td>
-           <td>{row.title} </td>
-           <td>{row.company_name}</td>
-           <td>{row.email}</td>
-           <td>{row.phone_number}</td>
-           <td>{row.is_admin ? "Yes" : "No"}</td>
-           <td>{formatEpochToDisplay(row.last_login)}</td>
-           <td>{row.verify_user ? "Verified" : "Not verified"}</td>
-           <td><input type="checkbox" bind:group={selectedUserIds} value={row.user_id} disabled={row.verify_user}> </td>
+            <td>{row.trailer_id}</td>
+            <td>{row.trailer_number}</td>
+            <td>{formatEpochToDisplay(row.date_added)}</td>
         </tr>
         {/each}
     {/if}
     </tbody>
     </table>
-    <button type="submit" class="header-btn" style="position:absolute;margin-right:2%;right:0;"> Verify Selected Users </button>
-    </form>
     </div>
     </div> 
     <footer>

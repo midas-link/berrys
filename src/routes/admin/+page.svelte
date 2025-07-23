@@ -82,6 +82,7 @@
     <link rel="stylesheet" href="{base}/css/styles.css">
     <title>Admin Panel</title>
 </svelte:head>
+<div class="page-wrapper">
     <header>
         <div class="header-container">
             <div class="top-header">
@@ -99,49 +100,49 @@
         </div>
 
         <div class="stats-grid">
-            <div class="stat-card">
+            <a href="{base}/admin/manageUsers" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon">👥</div>
                 <div class="stat-content">
                     <h3>Total Users</h3>
                     <p>{summaryData.total_users}</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{base}/admin/trailers" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Truck_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Trailers</h3>
                     <p>{summaryData.total_trailers}</p>
                 </div>
-            </div>
+            </a>
 
-            <div class="stat-card">
+            <a href="{base}/admin/deliveries" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Moving_truck.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Deliveries</h3>
                     <p>{summaryData.total_deliveries}</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{base}/admin/crossDrops" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Cross-Drops</h3>
                     <p>{summaryData.total_cross_drops}</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{base}/admin/locations" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Gas_station_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Locations</h3>
                     <p>{summaryData.total_locations}</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{base}/admin/products" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Products</h3>
                     <p>{summaryData.total_products}</p>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="admin-actions">
@@ -178,14 +179,26 @@
         <img src="{base}/images/logo.png" alt="Berrys Logo" >
     </div>
 </footer>
+</div>
 
 <style>
 
-.main-container{
+.page-wrapper {
+    height: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+.page-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+.main-container {
+    flex: 1 0 auto;
     padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
-    height:100%;
 }
 .dashboard-header {
     display: flex;
@@ -211,11 +224,14 @@
 .stat-card {
     background: white;
     border-radius: 10px;
-    padding: 1.5rem;
+    padding: 0.5rem 0 2rem 0;
+    margin: 2rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex;
+    display:grid;
     align-items: center;
+    justify-items: center;
     gap: 1rem;
+    text-decoration: none;
 }
 .stat-icon {
     font-size: 2rem;
@@ -303,6 +319,10 @@
 }
 .logout-btn:hover {
     background: #013b77;
+}
+
+footer {
+    flex-shrink: 0;
 }
 
 @media (max-width: 1000px) {

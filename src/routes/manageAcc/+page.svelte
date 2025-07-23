@@ -365,9 +365,9 @@
   }
   .profile-details {
     display: flex;
-    flex-direction: row; /* Align children in a row */
-    justify-content: space-between; /* Optional: space them out evenly */
-    align-items: center; /* Optional: center them vertically */
+    flex-direction: row;
+    justify-content: space-between; 
+    align-items: center; 
   }
   .form-container {
     border-radius: 25px;
@@ -390,16 +390,16 @@
   }
   .form-row {
     display: flex;
-    align-items: center; /* Align items vertically centered */
-    margin-bottom: 4vh; /* Add some space between rows */
+    align-items: center; 
+    margin-bottom: 4vh; 
   }
   .form-row label {
-    margin-right: 3vh; /* Add space between label and input */
+    margin-right: 3vh; 
   }
   .form-container form {
     display: flex;
-    flex-direction: column; /* Stack children vertically */
-    align-items: center; /* Center children horizontally */
+    flex-direction: column; 
+    align-items: center; 
   }
   .form-container button {
     background-color: #014b96;

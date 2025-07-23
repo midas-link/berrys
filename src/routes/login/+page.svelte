@@ -66,7 +66,7 @@
   onMount(() => {
     setTimeout(()=> {
       loginErrorMessage = '';
-    },1000*10)
+    },1000*5)
   });
 </script>
 
