@@ -122,7 +122,7 @@
                     <p>{summaryData.total_deliveries}</p>
                 </div>
             </a>
-            <a href="{base}/admin/crossDrops" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
+            <a href="{base}/admin/cross-drops" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Cross-Drops</h3>
