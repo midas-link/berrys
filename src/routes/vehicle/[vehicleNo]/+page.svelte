@@ -5,6 +5,7 @@
   import { goto } from "$app/navigation";
   import { get } from "svelte/store";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  import { error } from "@sveltejs/kit";
 
   export let data;
   $: trailer = data.trailerNumber || $page.state?.trailer;
@@ -20,6 +21,8 @@
   let currentDisplayDate = new Date();
   let isSidebarActive = false;
   let searchBy = "day";
+  let anotherVehicleInput = "";
+  let anotherVehicleInputError = "";
   const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
   const monthOptions = [
     { value: 1, label: "January" },
@@ -42,6 +45,32 @@
   $: if (searchBy) {
     selectedValue = "";
   }
+  async function handleGotoVehicle() {
+    anotherVehicleInputError = ""; 
+    if (anotherVehicleInput.length == 0) {
+      anotherVehicleInputError = "Please enter a valid vehicle number";
+      return;
+    }
+    try {
+  const response = await fetch(`/api/Vehicle_Logs/${anotherVehicleInput}`);
+  if(!response.ok){
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  const data = await response.json();
+  if(data.length === 0 ) {
+    anotherVehicleInputError = "Vehicle was not found";
+    anotherVehicleInput = "";
+    return;
+  }
+  else {
+  gotoVehicle(anotherVehicleInput)
+  }
+    } catch(err){
+      anotherVehicleInputError = "An error has occurred. Please try again.";
+      console.log("An error has occurred. Error:",err);
+    }
+
+  }
   function formatEpochToTime(timestamp) {
     if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
     const date = new Date(timestamp * 1000);
@@ -52,35 +81,28 @@
     });
   }
   function goToSelectedDate() {
-    if (!selectedValue) return; // Do nothing if no value is selected
+    if (!selectedValue) return; 
 
     const newDate = new Date(currentDisplayDate);
 
     if (searchBy === "day") {
-      // Set the day while keeping current month and year
       newDate.setDate(parseInt(selectedValue));
       currentDisplayDate = newDate;
 
-      // Switch to daily view when selecting a specific day
       changeView("daily");
     } else if (searchBy === "month") {
-      // Set the month while keeping current year
-      newDate.setMonth(parseInt(selectedValue) - 1); // Months are 0-indexed in JS
-      newDate.setDate(1); // Set to first day of the month
+      newDate.setMonth(parseInt(selectedValue) - 1);
+      newDate.setDate(1); 
       currentDisplayDate = newDate;
 
-      // Switch to monthly view when selecting a specific month
       changeView("monthly");
     } else if (searchBy === "year") {
-      // Set the year while keeping the current month
       newDate.setFullYear(parseInt(selectedValue));
       currentDisplayDate = newDate;
 
-      // Could optionally switch to yearly view here if implemented
-      changeView("monthly"); // Default to monthly view for now when selecting a year
+      changeView("monthly"); 
     }
 
-    // Update displayed events
     displayedTimelineEvents = filterEvents();
   }
   function openDetails(event) {
@@ -98,8 +120,10 @@
   }
 
   function gotoVehicle(vehicleNum) {
+    anotherVehicleInput = "";
     goto(`${base}/vehicle/${vehicleNum}`, {
       state: {
+        from: currentPath,
         trailer: vehicleNum,
       },
     });
@@ -107,7 +131,13 @@
 
   function handleBreadcrumbNavigation() {
     if (previousURL) {
-      goto(`${previousURL}`);
+      const parts = previousURL.split("/");
+      goto(`${previousURL}`, {
+        state: {
+          trailer: parts[2]
+        }
+      }
+      )
     } else {
       goto(`${base}/vehicle-logging`);
     }
@@ -189,7 +219,6 @@
         return eventDate && eventDate >= startOfWeek && eventDate <= endOfWeek;
       });
     } else {
-      // Monthly view (default)
       return sortedEvents.filter((event) => {
         const eventDate = parseEpochToDate(event.event_timestamp);
         return (
@@ -212,26 +241,25 @@
         currentDisplayDate.getDate() + (direction === "left" ? -7 : 7)
       );
     } else {
-      // Monthly view
       newDate.setMonth(
         currentDisplayDate.getMonth() + (direction === "left" ? -1 : 1)
       );
     }
-    currentDisplayDate = newDate; // Update reactive variable
-    displayedTimelineEvents = filterEvents(); // Re-filter and update displayed events
+    currentDisplayDate = newDate; 
+    displayedTimelineEvents = filterEvents(); 
   }
 
   function changeView(view) {
-    activeView = view; // Update reactive variable
-    displayedTimelineEvents = filterEvents(); // Re-filter and update displayed events
+    activeView = view; 
+    displayedTimelineEvents = filterEvents(); 
   }
 
   function getPosition(index, total) {
-    const minPosition = 5; // 5% from the left edge
-    const maxPosition = 95; // 5% from the right edge
+    const minPosition = 5; 
+    const maxPosition = 95; 
     const availableSpace = maxPosition - minPosition;
 
-    if (total === 1) return 50; // Center if only one event
+    if (total === 1) return 50; 
     return minPosition + (availableSpace / (total - 1)) * index;
   }
 
@@ -241,7 +269,6 @@
     const overlay = document.getElementById("overlay");
 
     if (hamburger && sidebar && overlay) {
-      // Check if elements exist
       hamburger.addEventListener("click", function () {
         sidebar.classList.toggle("active");
         overlay.style.display = sidebar.classList.contains("active")
@@ -265,11 +292,10 @@
   }
   async function fetchEventsData() {
     if (!trailer) {
-      // Don't fetch if no trailer is set
       timelineError = "No trailer selected.";
       timelineLoading = false;
-      allTimelineEvents = []; // Clear previous data
-      displayedTimelineEvents = []; // Clear displayed data
+      allTimelineEvents = []; 
+      displayedTimelineEvents = []; 
       return;
     }
 
@@ -293,13 +319,12 @@
       const data = await response.json();
       console.log(`Timeline data for trailer ${trailer} loaded:`, data);
 
-      allTimelineEvents = data; // Populated with new fetched data
+      allTimelineEvents = data; 
 
-      // Reset currentDisplayDate to today when a new trailer is loaded
       currentDisplayDate = new Date();
-      // --- MODIFIED: Ensure changeView is called to filter the new data ---
-      changeView(activeView); // Re-filter and update displayed events based on the new 'allTimelineEvents'
-    } catch (error) {
+      changeView(activeView); 
+    }
+      catch(error){
       console.error(
         `Failed to load timeline data for trailer ${trailer}:`,
         error
@@ -312,6 +337,7 @@
     }
   }
   $: if (trailer) {
+    console.log("current trailer number is : " ,trailer);
     fetchEventsData();
   }
   onMount(async () => {
@@ -389,8 +415,8 @@
   </div>
   <div class="breadcrumb">
     <a href="{base}/home">Home</a><a
-      href="javascript:void(0)"
-      on:click={handleBreadcrumbNavigation}>{previousURL}</a
+      href="#"
+      on:click|preventDefault={handleBreadcrumbNavigation}>{previousURL}</a
     >/<span> Vehicle Details</span>
   </div>
 </div>
@@ -648,32 +674,25 @@
     </div>
 
     <div class="other-vehicle">
+      {#if anotherVehicleInputError}
+      <div class="input-error">{anotherVehicleInputError}</div>
+    {/if}
       <label for="another-vehicle">
         Looking for another vehicle? Search:
       </label>
       <input
         id="another-vehicle"
         class="another-vehicle"
-        on:keydown={(e) => {
-          if (e.key === "Enter") {
-            gotoVehicle(e.target.value);
-            e.target.value = "";
-          }
-        }}
+        bind:value={anotherVehicleInput}
       />
       <button
         class="another-vehicle"
         style="color:white;background-color:#014B96"
-        on:click={() => {
-          const input = document.getElementById("another-vehicle");
-          if (input) {
-            gotoVehicle(input.value);
-            input.value = "";
-          }
-        }}
+        on:click={handleGotoVehicle}
       >
         Go to Vehicle
       </button>
+ 
     </div>
   </div>
 </main>
@@ -1300,5 +1319,10 @@
       padding-left: 5vw;
       padding-right: 5vw;
     }
+  }
+  .input-error {
+    color: red;
+    font-size: 0.95rem;
+    margin-top: 4px;
   }
 </style>

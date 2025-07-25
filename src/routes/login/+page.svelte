@@ -43,16 +43,17 @@
           goto(redirectPath);
         }, 2000);
       } else {
-        if(response.status === 429) {
-          loginMessage = data.error ;
-        } else if( response.status === 400) {
-          loginMessage = data.error.map(err => err.msg).join('\n & ');
-        } else if(response.status === 401)  {
-          loginMessage = data.error;
+        const handlers = {
+          429: () => data.error,
+          400: () => data.error.map(err => err.msg).join('\n & '),
+          401: () => data.error,
+          403: () => data.error
+        };
+        if (handlers[response.status]) {
+          loginMessage = handlers[response.status]();
         } else {
-          loginMessage =  `An unexpected login error occured. Status: ${response.status}.`;
+          loginMessage = `An unexpected login error occured. Status: ${response.status}.`;
         }
-
         isLoginError = true;
       }
     } catch (error) {
