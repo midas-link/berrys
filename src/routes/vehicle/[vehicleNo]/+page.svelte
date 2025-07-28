@@ -52,24 +52,30 @@
       return;
     }
     try {
-  const response = await fetch(`/api/Vehicle_Logs/${anotherVehicleInput}`);
-  if(!response.ok){
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const data = await response.json();
-  if(data.length === 0 ) {
-    anotherVehicleInputError = "Vehicle was not found";
-    anotherVehicleInput = "";
-    return;
-  }
-  else {
-  gotoVehicle(anotherVehicleInput)
-  }
+      const response = await fetch(`/api/Vehicle_Logs/${anotherVehicleInput}`);
+      if(!response.ok) {
+        const errorData = await response.json();
+        if(response.status === 404) {
+          anotherVehicleInputError = errorData.error || "The requested vehicle could not be found.";
+          return;
+        } else {
+          anotherVehicleInputError = `HTTP error! status: ${response.status}`;
+          return;
+        }
+      }
+      const data = await response.json();
+      if(data.length === 0 ) {
+        anotherVehicleInputError = "Vehicle was not found";
+        anotherVehicleInput = "";
+        return;
+      }
+      else {
+        gotoVehicle(anotherVehicleInput)
+      }
     } catch(err){
       anotherVehicleInputError = "An error has occurred. Please try again.";
       console.log("An error has occurred. Error:",err);
     }
-
   }
   function formatEpochToTime(timestamp) {
     if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
