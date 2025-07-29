@@ -116,33 +116,40 @@
             </a>
 
             <a href="{base}/admin/deliveries" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Moving_truck.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-icon"><img src="{base}/images/Moving_truck.png" alt="Delivery" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Deliveries</h3>
                     <p>{summaryData.total_deliveries}</p>
                 </div>
             </a>
             <a href="{base}/admin/cross-drops" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Cross-Drop" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Cross-Drops</h3>
                     <p>{summaryData.total_cross_drops}</p>
                 </div>
             </a>
             <a href="{base}/admin/locations" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Gas_station_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-icon"><img src="{base}/images/Gas_station_graphic.png" alt="Locations" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Locations</h3>
                     <p>{summaryData.total_locations}</p>
                 </div>
             </a>
             <a href="{base}/admin/products" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
+                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Products" style="width:90%; height:90%;"></div>
                 <div class="stat-content">
                     <h3>Total Products</h3>
                     <p>{summaryData.total_products}</p>
                 </div>
             </a>
+            <!-- <a href="{base}/admin/contractors" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
+                <div class="stat-icon">🔧</div>
+                <div class="stat-content">
+                    <h3>Contractors</h3>
+                    <p></p>
+                </div>
+            </a> -->
         </div>
 
         <div class="admin-actions">
