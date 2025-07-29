@@ -14,7 +14,7 @@
         address: row.Address,
         city: row.City,
         state: row.State,
-        date: row.Date,
+        date: formatDate(formatEpochToDisplay(row.event_timestamp)),
         siteCode: row.SiteCode,
       },
     });
