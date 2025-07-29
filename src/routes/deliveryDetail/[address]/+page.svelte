@@ -6,7 +6,6 @@
   import { get } from "svelte/store";
   const currentPath = get(page).url.pathname;
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
-  // Function to save state to localStorage
   function saveStateToSession() {
     const state = {
       address: $page.state?.address,
@@ -19,7 +18,6 @@
     localStorage.setItem("deliveryDetailState", JSON.stringify(state));
   }
 
-  // Function to load state from localStorage
   function loadStateFromSession() {
     const savedState = localStorage.getItem("deliveryDetailState");
     if (savedState) {
@@ -31,7 +29,6 @@
     }
   }
 
-  // Modified gotoVehicle function to save state before navigation
   function gotoVehicle() {
     saveStateToSession();
     goto(`${base}/vehicle/HDY674`, {
@@ -52,15 +49,12 @@
   function formatDate(dateString) {
     if (!dateString) return "";
 
-    // Split the date string into day, month, year
     const [day, month, year] = dateString.split(".");
 
-    // Create a new date object (month is 0-based in JavaScript)
     const date = new Date(year, month - 1, day);
 
-    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+    if (isNaN(date.getTime())) return dateString; 
 
-    // Use original formatting for older dates
     const options = { year: "numeric", month: "long", day: "numeric" };
     return date.toLocaleDateString("en-US", options);
   }
@@ -81,7 +75,6 @@
       overlay.style.display = "none";
     });
 
-    // Close the sidebar when clicking on a link
     const sidebarLinks = sidebar.querySelectorAll("a");
     sidebarLinks.forEach((link) => {
       link.addEventListener("click", function () {
@@ -94,20 +87,17 @@
     document.getElementById("exportDropdown").classList.toggle("show");
   }
   function exportTableToCSV() {
-    // Clone the table to avoid modifying the original
     const originalTable = document.querySelector("table");
     const tableClone = originalTable.cloneNode(true);
 
-    // Remove all "View Vehicle Timeline" buttons from the clone
     const buttons = tableClone.querySelectorAll(".more-details");
     buttons.forEach((button) => {
-      button.parentNode.textContent = ""; // Replace button cell content with empty string
+      button.parentNode.textContent = ""; 
     });
 
     const rows = tableClone.querySelectorAll("tr");
     let csv = [];
 
-    // Get headers
     const headers = [];
     const headerCells = rows[0].querySelectorAll("th");
     headerCells.forEach((cell) => {
@@ -117,7 +107,6 @@
     headers.push(fullAddress);
     csv.push(headers.join(","));
 
-    // Get data rows - include details rows but without the button
     for (let i = 1; i < rows.length; i++) {
       const row = [];
       const cells = rows[i].querySelectorAll("td");
@@ -130,7 +119,6 @@
       }
     }
 
-    // Create blob
     const csvContent = csv.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 
@@ -188,7 +176,6 @@
 
       const doc = new jsPDF();
 
-      // Add title and timestamp
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text("Delivery Details Data for:", 14, 15);
@@ -203,20 +190,17 @@
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${timestamp}`, 14, 25);
 
-      // Get the specific table you want to export
-      const originalTable = document.querySelector("table"); // Use a more specific selector
+      const originalTable = document.querySelector("table"); 
       if (!originalTable) throw new Error("Table not found");
 
       const exportTable = originalTable.cloneNode(true);
 
-      // Remove action buttons more reliably
       const buttons = exportTable.querySelectorAll(".more-details");
       buttons.forEach((button) => {
         const cell = button.closest("td, th");
         if (cell) cell.textContent = "";
       });
 
-      // Generate the table in PDF
       doc.autoTable({
         html: exportTable,
         startY: 30,
@@ -239,7 +223,6 @@
         margin: { top: 30 },
       });
 
-      // Generate filename
       const date = new Date();
       const formattedDate = date.toISOString().split("T")[0];
       const formattedTime = date
@@ -248,7 +231,6 @@
         .replace(/:/g, "-");
       const fileName = `delivery_details_${formattedDate}_${formattedTime}.pdf`;
 
-      // Save the file
       if ("showSaveFilePicker" in window) {
         try {
           const handle = await window.showSaveFilePicker({
@@ -261,7 +243,7 @@
             ],
           });
           const writable = await handle.createWritable();
-          await writable.write(doc.output("blob")); // No need for new Blob()
+          await writable.write(doc.output("blob")); 
           await writable.close();
         } catch (err) {
           console.error("File save error:", err);
@@ -271,14 +253,12 @@
         fallbackSavePDF(doc, fileName);
       }
 
-      return true; // Indicate success
+      return true; 
     } catch (error) {
       console.error("PDF generation failed:", error);
-      // You might want to show a user-friendly error message here
-      return false; // Indicate failure
+      return false; 
     }
   }
-  // Fallback save method for PDF
   function fallbackSavePDF(doc, fileName) {
     doc.save(fileName);
   }
