@@ -130,7 +130,7 @@
               <span class="checkmark"></span>
               Remember me
             </label>
-            <a href="{base}/login/accounts/password/reset" class="forgot-password">Forgot Password?</a>
+            <a href="{base}/login/accounts/password/forgot" class="forgot-password">Forgot Password?</a>
           </div>
           <button type="submit" class="sign-in-button">Sign In</button>
           <div class="no-account">

@@ -5,76 +5,45 @@
     import { goto } from "$app/navigation";
     import { page } from "$app/stores";
     let email = "";
-    let password = "";
-    let loginMessage = "";
-    let rememberMe = false;
-    let isLoginError = false;
-    let showPopup = false;
-    $: loginErrorMessage = $page.url.searchParams.get('authMessage') || '';
-    async function handleLogin() {
-      loginMessage = "";
-      isLoginError = false;
-      showPopup = false;
-  
-      try {
-        const response = await fetch(`/api/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials:'include',
-          body: JSON.stringify({
-            email: email,
-            password: password,
-            rememberMe: rememberMe
-          }),
-        });
-  
-        const data = await response.json();
-  
-        if (response.ok) {
-          loginMessage = data.message || "Logged in successfully.";
-          isLoginError = false;
-          showPopup = true;
-          localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
-          const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
-  
-          setTimeout(() => {
-            goto(redirectPath);
-          }, 2000);
-        } else {
-          const handlers = {
-            429: () => data.error,
-            400: () => data.error.map(err => err.msg).join('\n & '),
-            401: () => data.error,
-            403: () => data.error
-          };
-          if (handlers[response.status]) {
-            loginMessage = handlers[response.status]();
-          } else {
-            loginMessage = `An unexpected login error occured. Status: ${response.status}.`;
-          }
-          isLoginError = true;
-        }
-      } catch (error) {
-        console.error("Client-side login error:", error);
-        loginMessage =
-          "Network error or server unreachable. Please check your connection.";
-        isLoginError = true;
+    let responseMessage = "";
+    let isForgotError = false;
+    $: errorMessage = $page.url.searchParams.get('authMessage') || '';
+    async function handleForgotPassword() {
+      if(!email) {
+        responseMessage = "An email is required"
       }
+      try {
+      const response = await fetch('/api/forgot_password', {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email
+        })
+      });
+      const data = await response.json();
+      if(response.ok) {
+        responseMessage = data.message || "A password reset link has been sent to the entered email"
+        isForgotError = false;
+      } else {
+        console.log("Something went wrong");
+      }
+    } catch(err) {
+      console.log("Client-side error:",err);
+      isForgotError = true;
+    }
     }
   
     onMount(() => {
-      setTimeout(()=> {
-        loginErrorMessage = '';
-      },1000*5)
+      
     });
   </script>
   
   <svelte:head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
+    <title>Forgot Password</title>
     <link
       href="https://fonts.googleapis.com/css?family=Mulish"
       rel="stylesheet"
@@ -93,13 +62,13 @@
     />
     <main>
       <div class="content">
-        <div class="sign-in-container">
-          <form on:submit|preventDefault={handleLogin} class="sign-in-form">
-            {#if loginMessage}
-            <p style="color: {isLoginError ? 'red' : 'green'};">{loginMessage}</p>
+        <div class="forgot-password-container">
+          <form on:submit|preventDefault={handleForgotPassword} class="forgot-password-form">
+            {#if responseMessage}
+            <p style="color: {isForgotError ? 'red' : 'green'};">{responseMessage}</p>
           {/if}
-           {#if loginErrorMessage}
-           <p style="color: red;"> {loginErrorMessage}</p> 
+           {#if errorMessage}
+           <p style="color: red;"> {errorMessage}</p> 
            {/if}
             <div style="display: flex; flex-direction: column; align-items: center;">
                 <svg xmlns="http://www.w3.org/2000/svg" height="64px" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -119,29 +88,18 @@
               />
             </div>
          
-            <button type="submit" class="sign-in-button">Reset Password</button>
+            <button type="submit" class="reset-password-button">Reset Password</button>
             <div class="no-account">
               Don't have an account? <a
                 class="sign-up-link"
                 href="{base}/register">Sign up</a 
               > 
+              Back to <a class="login-link" href="{base}/login">Login</a>
             </div>
           </form>
           
   
-          <div
-            id="popup"
-            class="popup"
-            style="display: {showPopup ? 'flex' : 'none'};"
-          >
-            <div class="popup-content">
-              <p id="popup-message">✅ {loginMessage}</p>
-              <div id="loading-indicator" class="loading-indicator">
-                <p>Loading...</p>
-                <div class="spinner"></div>
-              </div>
-            </div>
-          </div>
+       
         </div>
       </div>
     </main>
@@ -223,7 +181,7 @@
         width: 80%;
         margin-left: 20%;
       }
-      .sign-in-container {
+      .forgot-password-container {
         padding: 1rem !important;
         justify-content: center !important;
       }
@@ -237,7 +195,7 @@
       }
     }
   
-    .sign-in-container {
+    .forgot-password-container {
       display: flex;
       justify-content: flex-start;
       align-items: center;
@@ -249,7 +207,7 @@
       flex: 1;
     }
   
-    .sign-in-form {
+    .forgot-password-form {
       background: white;
       padding: clamp(1.5rem, 4vw, 2rem);
       padding-bottom: 0.25rem;
@@ -258,34 +216,14 @@
       width: 100%;
       max-width: 400px;
     }
-  
-    .sign-in-form p.sign-in-title {
-      background: linear-gradient(
-        to right,
-        var(--gradient-start),
-        var(--gradient-end)
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      font-size: 1.25rem;
-      white-space: nowrap;
-      margin-bottom: 1.5rem;
-      font-weight: 800;
-    }
+ 
   
     .form-group {
       margin-top: 1.5rem;
       margin-bottom: 1.5rem;
     }
  
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      color: RGB(115, 115, 115);
-      font-size: 0.875rem;
-      font-family: Inter;
-    }
+
   
     .form-group input[type="email"]
     {
@@ -304,10 +242,15 @@
       border-color: var(--gradient-end);
     }
     .sign-up-link {
+      margin-right:1.5rem;
       color: var(--gradient-start);
       text-decoration: none;
     }
-    .sign-in-button {
+    .login-link {
+      color: var(--gradient-start);
+      text-decoration: none;
+    }
+    .reset-password-button {
       width: 100%;
       padding: 0.75rem;
       background: #014b96;
@@ -322,7 +265,7 @@
       font-weight: 700;
     }
   
-    .sign-in-button:hover {
+    .reset-password-button:hover {
       background-color: #012f5e;
     }
     .no-account {
@@ -330,60 +273,6 @@
       font-family: "Inter";
       margin-bottom: 1vh;
       color: #737373;
-    }
-    .popup {
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-  
-    .popup-content {
-      background-color: white;
-      padding: 2vh 2vw;
-      border-radius: 5px;
-      text-align: center;
-      font-family: "Mulish";
-      white-space: nowrap;
-    }
-    :global(.wrong-credentials) {
-      color: red;
-      align-items: center;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-    :global(.wrong-credentials.show) {
-      opacity: 1;
-    }
-    .loading-indicator {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      margin-top: 10px;
-    }
-  
-    .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top: 4px solid #014b96;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 1s linear infinite;
-    }
-  
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-      100% {
-        transform: rotate(360deg);
-      }
     }
   </style>
   

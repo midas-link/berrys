@@ -11,7 +11,8 @@ export async function load(event) {
     
     const publicRootPaths = [
         `${basePath}/login`,
-        `${basePath}/login/accounts/password/reset`,
+        `${basePath}/login/accounts/password/forgot`,
+        `${basePath}/login/reset-password`,
         `${basePath}/register`,
         `${basePath}/register/`,
         `${basePath}/`,
