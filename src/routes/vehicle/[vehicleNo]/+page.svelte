@@ -1,719 +1,692 @@
 <script>
-  import { onMount } from "svelte";
-  import { base } from "$app/paths";
-  import { page } from "$app/stores";
-  import { goto } from "$app/navigation";
-  import { get } from "svelte/store";
-  import { PUBLIC_API_BASE_URL } from "$env/static/public";
-  import { error } from "@sveltejs/kit";
+	import { onMount } from "svelte";
+	import { base } from "$app/paths";
+	import { page } from "$app/stores";
+	import { goto } from "$app/navigation";
+	import { get } from "svelte/store";
+	import { PUBLIC_API_BASE_URL } from "$env/static/public";
 
-  export let data;
-  $: trailer = data.trailerNumber || $page.state?.trailer;
+	export let data;
 
-  $: previousURL = $page.state?.from;
-  const currentPath = get(page).url.pathname;
+	$: trailer = data.vehicleEvents && data.vehicleEvents.length > 0
+                ? data.vehicleEvents[0]["Trailer No."]
+                : 'N/A'; 
 
-  let allTimelineEvents = [];
-  let timelineLoading = true;
-  let timelineError = null;
-  let displayedTimelineEvents = [];
-  let activeView = "monthly";
-  let currentDisplayDate = new Date();
-  let isSidebarActive = false;
-  let searchBy = "day";
-  let anotherVehicleInput = "";
-  let anotherVehicleInputError = "";
-  const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
-  const monthOptions = [
-    { value: 1, label: "January" },
-    { value: 2, label: "February" },
-    { value: 3, label: "March" },
-    { value: 4, label: "April" },
-    { value: 5, label: "May" },
-    { value: 6, label: "June" },
-    { value: 7, label: "July" },
-    { value: 8, label: "August" },
-    { value: 9, label: "September" },
-    { value: 10, label: "October" },
-    { value: 11, label: "November" },
-    { value: 12, label: "December" },
-  ];
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 51 }, (_, i) => currentYear - i);
-  let selectedValue = "";
+	$: previousURL = $page.state?.from;
+	const currentPath = get(page).url.pathname;
 
-  $: if (searchBy) {
-    selectedValue = "";
-  }
-  async function handleGotoVehicle() {
-    anotherVehicleInputError = ""; 
-    if (anotherVehicleInput.length == 0) {
-      anotherVehicleInputError = "Please enter a valid vehicle number";
-      return;
-    }
-    try {
-      const response = await fetch(`/api/Vehicle_Logs/${anotherVehicleInput}`);
-      if(!response.ok) {
-        const errorData = await response.json();
-        if(response.status === 404) {
-          anotherVehicleInputError = errorData.error || "The requested vehicle could not be found.";
-          return;
-        } else {
-          anotherVehicleInputError = `HTTP error! status: ${response.status}`;
-          return;
-        }
-      }
-      const data = await response.json();
-      if(data.length === 0 ) {
-        anotherVehicleInputError = "Vehicle was not found";
-        anotherVehicleInput = "";
-        return;
-      }
-      else {
-        gotoVehicle(anotherVehicleInput)
-      }
-    } catch(err){
-      anotherVehicleInputError = "An error has occurred. Please try again.";
-      console.log("An error has occurred. Error:",err);
-    }
-  }
-  function formatEpochToTime(timestamp) {
-    if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-  function goToSelectedDate() {
-    if (!selectedValue) return; 
+	let allTimelineEvents = [];
+	let timelineLoading = true; 
+	let displayedTimelineEvents = [];
+  let timelineError = '';
 
-    const newDate = new Date(currentDisplayDate);
+	let activeView = "monthly"; 
+	let currentDisplayDate = new Date(); 
+	let isSidebarActive = false; 
 
-    if (searchBy === "day") {
-      newDate.setDate(parseInt(selectedValue));
-      currentDisplayDate = newDate;
+	let searchBy = "day";
+	let anotherVehicleInput = "";
+	let anotherVehicleInputError = "";
 
-      changeView("daily");
-    } else if (searchBy === "month") {
-      newDate.setMonth(parseInt(selectedValue) - 1);
-      newDate.setDate(1); 
-      currentDisplayDate = newDate;
+	const dayOptions = Array.from({ length: 31 }, (_, i) => i + 1);
+	const monthOptions = [
+		{ value: 1, label: "January" }, { value: 2, label: "February" },
+		{ value: 3, label: "March" }, { value: 4, label: "April" },
+		{ value: 5, label: "May" }, { value: 6, label: "June" },
+		{ value: 7, label: "July" }, { value: 8, label: "August" },
+		{ value: 9, label: "September" }, { value: 10, label: "October" },
+		{ value: 11, label: "November" }, { value: 12, label: "December" },
+	];
+	const currentYear = new Date().getFullYear();
+	const yearOptions = Array.from({ length: 51 }, (_, i) => currentYear - i);
+	let selectedValue = "";
 
-      changeView("monthly");
-    } else if (searchBy === "year") {
-      newDate.setFullYear(parseInt(selectedValue));
-      currentDisplayDate = newDate;
+	$: if (searchBy) {
+		selectedValue = "";
+	}
 
-      changeView("monthly"); 
-    }
-
-    displayedTimelineEvents = filterEvents();
-  }
-  function openDetails(event) {
-    goto(`${base}/deliveryDetail/${event.Zip}`, {
-      state: {
-        from: currentPath,
-        address: event.Address,
-        city: event.City,
-        state: event.State,
-        date: formatEventDate(event.event_timestamp),
-        time: formatEpochToTime(event.event_timestamp),
-        siteCode: event.Zip,
-      },
-    });
-  }
-
-  function gotoVehicle(vehicleNum) {
-    anotherVehicleInput = "";
-    goto(`${base}/vehicle/${vehicleNum}`, {
-      state: {
-        from: currentPath,
-        trailer: vehicleNum,
-      },
-    });
-  }
-
-  function handleBreadcrumbNavigation() {
-    if (previousURL) {
-      const parts = previousURL.split("/");
-      goto(`${previousURL}`, {
-        state: {
-          trailer: parts[2]
-        }
-      }
-      )
+    $: if (data.vehicleEvents !== undefined && data.vehicleEvents !== null) {
+        allTimelineEvents = data.vehicleEvents;
+        timelineLoading = false; 
+        currentDisplayDate = new Date(); 
+        changeView(activeView); 
     } else {
-      goto(`${base}/vehicle-logging`);
-    }
-  }
-
-  function parseEpochToDate(epochSeconds) {
-    if (typeof epochSeconds !== "number" || isNaN(epochSeconds)) return null;
-    return new Date(epochSeconds * 1000);
-  }
-
-  function formatDisplayDate(date) {
-    if (!date) return "";
-    if (activeView === "daily") {
-      const options = { year: "numeric", month: "long", day: "numeric" };
-      return date.toLocaleDateString("en-US", options);
-    } else if (activeView === "weekly") {
-      const startOfWeek = new Date(date);
-      startOfWeek.setDate(date.getDate() - date.getDay()); // Sunday is 0
-
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-      const startOptions = { month: "long", day: "numeric" };
-      const endOptions = { month: "long", day: "numeric", year: "numeric" };
-
-      if (
-        startOfWeek.getMonth() === endOfWeek.getMonth() &&
-        startOfWeek.getFullYear() === endOfWeek.getFullYear()
-      ) {
-        return `${startOfWeek.toLocaleDateString("en-US", { day: "numeric" })} - ${endOfWeek.toLocaleDateString("en-US", endOptions)}`;
-      }
-
-      return `${startOfWeek.toLocaleDateString("en-US", startOptions)} - ${endOfWeek.toLocaleDateString("en-US", endOptions)}`;
-    } else if (activeView === "monthly") {
-      const options = { year: "numeric", month: "long" };
-      return date.toLocaleDateString("en-US", options);
-    } else {
-      return date.getFullYear().toString();
-    }
-  }
-
-  function formatEventDate(epochSeconds) {
-    const date = parseEpochToDate(epochSeconds);
-    if (isNaN(date?.getTime())) return "";
-    const options = { year: "numeric", month: "long", day: "numeric" };
-    return date.toLocaleDateString("en-US", options);
-  }
-
-  function sortEventsByDate(events) {
-    return [...events].sort((a, b) => a.event_timestamp - b.event_timestamp);
-  }
-
-  function filterEvents() {
-    const sortedEvents = sortEventsByDate(allTimelineEvents);
-
-    if (activeView === "daily") {
-      return sortedEvents.filter((event) => {
-        const eventDate = parseEpochToDate(event.event_timestamp);
-        return (
-          eventDate &&
-          eventDate.getDate() === currentDisplayDate.getDate() &&
-          eventDate.getMonth() === currentDisplayDate.getMonth() &&
-          eventDate.getFullYear() === currentDisplayDate.getFullYear()
-        );
-      });
-    } else if (activeView === "weekly") {
-      const startOfWeek = new Date(currentDisplayDate);
-      startOfWeek.setHours(0, 0, 0, 0);
-      startOfWeek.setDate(
-        currentDisplayDate.getDate() - currentDisplayDate.getDay()
-      );
-
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
-
-      return sortedEvents.filter((event) => {
-        const eventDate = parseEpochToDate(event.event_timestamp);
-        return eventDate && eventDate >= startOfWeek && eventDate <= endOfWeek;
-      });
-    } else {
-      return sortedEvents.filter((event) => {
-        const eventDate = parseEpochToDate(event.event_timestamp);
-        return (
-          eventDate &&
-          eventDate.getMonth() === currentDisplayDate.getMonth() &&
-          eventDate.getFullYear() === currentDisplayDate.getFullYear()
-        );
-      });
-    }
-  }
-
-  function navigateTimeline(direction) {
-    const newDate = new Date(currentDisplayDate);
-    if (activeView === "daily") {
-      newDate.setDate(
-        currentDisplayDate.getDate() + (direction === "left" ? -1 : 1)
-      );
-    } else if (activeView === "weekly") {
-      newDate.setDate(
-        currentDisplayDate.getDate() + (direction === "left" ? -7 : 7)
-      );
-    } else {
-      newDate.setMonth(
-        currentDisplayDate.getMonth() + (direction === "left" ? -1 : 1)
-      );
-    }
-    currentDisplayDate = newDate; 
-    displayedTimelineEvents = filterEvents(); 
-  }
-
-  function changeView(view) {
-    activeView = view; 
-    displayedTimelineEvents = filterEvents(); 
-  }
-
-  function getPosition(index, total) {
-    const minPosition = 5; 
-    const maxPosition = 95; 
-    const availableSpace = maxPosition - minPosition;
-
-    if (total === 1) return 50; 
-    return minPosition + (availableSpace / (total - 1)) * index;
-  }
-
-  function setupMobileMenu() {
-    const hamburger = document.getElementById("hamburger-menu");
-    const sidebar = document.getElementById("mobile-sidebar");
-    const overlay = document.getElementById("overlay");
-
-    if (hamburger && sidebar && overlay) {
-      hamburger.addEventListener("click", function () {
-        sidebar.classList.toggle("active");
-        overlay.style.display = sidebar.classList.contains("active")
-          ? "block"
-          : "none";
-      });
-
-      overlay.addEventListener("click", function () {
-        sidebar.classList.remove("active");
-        overlay.style.display = "none";
-      });
-
-      const sidebarLinks = sidebar.querySelectorAll("a");
-      sidebarLinks.forEach((link) => {
-        link.addEventListener("click", function () {
-          sidebar.classList.remove("active");
-          overlay.style.display = "none";
-        });
-      });
-    }
-  }
-  async function fetchEventsData() {
-    if (!trailer) {
-      timelineError = "No trailer selected.";
-      timelineLoading = false;
-      allTimelineEvents = []; 
-      displayedTimelineEvents = []; 
-      return;
+        timelineError = "No timeline data found for this vehicle.";
+        timelineLoading = false;
+        allTimelineEvents = [];
+        displayedTimelineEvents = [];
     }
 
-    try {
-      timelineLoading = true;
-      timelineError = null;
-      console.log(`Fetching timeline data for trailer: ${trailer} from API...`);
-      const response = await fetch(`/api/Vehicle_Logs/${trailer}`, {
-        method:'GET',
-        credentials:'include'
-      }
-      );
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: "Unknown error" }));
-        throw new Error(
-          `HTTP error! Status: ${response.status}. Message: ${errorData.error || response.statusText}`
-        );
-      }
-      const data = await response.json();
-      console.log(`Timeline data for trailer ${trailer} loaded:`, data);
 
-      allTimelineEvents = data; 
+	async function handleGotoVehicle() {
+		anotherVehicleInputError = ""; 
+		if (anotherVehicleInput.length === 0) {
+			anotherVehicleInputError = "Please enter a valid vehicle number";
+			return;
+		}
 
-      currentDisplayDate = new Date();
-      changeView(activeView); 
-    }
-      catch(error){
-      console.error(
-        `Failed to load timeline data for trailer ${trailer}:`,
-        error
-      );
-      timelineError = `Failed to load timeline data for ${trailer}: ${error.message || error}`;
-      allTimelineEvents = [];
-      displayedTimelineEvents = [];
-    } finally {
-      timelineLoading = false;
-    }
-  }
-  $: if (trailer) {
-    console.log("current trailer number is : " ,trailer);
-    fetchEventsData();
-  }
-  onMount(async () => {
-    setupMobileMenu();
-  });
+		try {
+			const response = await fetch(`${PUBLIC_API_BASE_URL}/api/Vehicle_Logs/${anotherVehicleInput}`, {
+				method: "GET",
+				credentials: 'include',
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+				if(response.status === 404) {
+                    anotherVehicleInputError = errorData.error || "The requested vehicle could not be found.";
+                    return;
+                } else {
+                    anotherVehicleInputError = `HTTP error! Status: ${response.status}. Message: ${errorData.error || response.statusText}`;
+                    return;
+                }
+			}
+			goto(`${base}/vehicle/${anotherVehicleInput}`, {
+				state: {
+					from: currentPath, 
+					trailer: anotherVehicleInput, 
+				},
+			});
+			anotherVehicleInput = ""; 
+
+		} catch(err){
+			anotherVehicleInputError = "An unexpected error occurred. Please try again.";
+			console.error("Client-side error in handleGotoVehicle:", err);
+		}
+	}
+
+	function formatEpochToTime(timestamp) {
+		if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
+		const date = new Date(timestamp * 1000);
+		return date.toLocaleTimeString("en-US", {
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: false,
+		});
+	}
+
+	function goToSelectedDate() {
+		if (!selectedValue) return;
+
+		const newDate = new Date(currentDisplayDate);
+
+		if (searchBy === "day") {
+			newDate.setDate(parseInt(selectedValue));
+			currentDisplayDate = newDate;
+			changeView("daily");
+		} else if (searchBy === "month") {
+			newDate.setMonth(parseInt(selectedValue) - 1);
+			newDate.setDate(1); 
+			currentDisplayDate = newDate;
+			changeView("monthly");
+		} else if (searchBy === "year") {
+			newDate.setFullYear(parseInt(selectedValue));
+			currentDisplayDate = newDate;
+			changeView("monthly"); 
+		}
+
+		displayedTimelineEvents = filterEvents(); 
+	}
+
+	function openDetails(event) {
+		goto(`${base}/deliveryDetail/${event.Zip}`, {
+			state: {
+				from: currentPath,
+				address: event.Address,
+				city: event.City,
+				state: event.State,
+				date: formatEventDate(event.event_timestamp),
+				time: formatEpochToTime(event.event_timestamp),
+				siteCode: event.Zip,
+			},
+		});
+	}
+
+	function gotoVehicle(vehicleNum) {
+		anotherVehicleInput = "";
+		goto(`${base}/vehicle/${vehicleNum}`, {
+			state: {
+				from: currentPath,
+				trailer: vehicleNum,
+			},
+		});
+	}
+
+	function handleBreadcrumbNavigation() {
+		if (previousURL) {
+	
+			const parts = previousURL.split("/");
+			goto(`${previousURL}`, {
+				state: {
+					trailer: parts[2] 
+				}
+			});
+		} else {
+			goto(`${base}/vehicle-logging`); // Fallback if no previousURL
+		}
+	}
+
+	function parseEpochToDate(epochSeconds) {
+		if (typeof epochSeconds !== "number" || isNaN(epochSeconds)) return null;
+		return new Date(epochSeconds * 1000);
+	}
+
+	function formatDisplayDate(date) {
+		if (!date) return "";
+		if (activeView === "daily") {
+			const options = { year: "numeric", month: "long", day: "numeric" };
+			return date.toLocaleDateString("en-US", options);
+		} else if (activeView === "weekly") {
+			const startOfWeek = new Date(date);
+			startOfWeek.setHours(0, 0, 0, 0);
+			startOfWeek.setDate(
+				currentDisplayDate.getDate() - currentDisplayDate.getDay() 
+			);
+
+			const endOfWeek = new Date(startOfWeek);
+			endOfWeek.setDate(startOfWeek.getDate() + 6); 
+			endOfWeek.setHours(23, 59, 59, 999);
+
+			const startOptions = { month: "long", day: "numeric" };
+			const endOptions = { month: "long", day: "numeric", year: "numeric" };
+
+			if (
+				startOfWeek.getMonth() === endOfWeek.getMonth() &&
+				startOfWeek.getFullYear() === endOfWeek.getFullYear()
+			) {
+				return `${startOfWeek.toLocaleDateString("en-US", { day: "numeric" })} - ${endOfWeek.toLocaleDateString("en-US", endOptions)}`;
+			}
+
+			return `${startOfWeek.toLocaleDateString("en-US", startOptions)} - ${endOfWeek.toLocaleDateString("en-US", endOptions)}`;
+		} else if (activeView === "monthly") {
+			const options = { year: "numeric", month: "long" };
+			return date.toLocaleDateString("en-US", options);
+		} else {
+			return date.getFullYear().toString();
+		}
+	}
+
+	function formatEventDate(epochSeconds) {
+		const date = parseEpochToDate(epochSeconds);
+		if (isNaN(date?.getTime())) return "";
+		const options = { year: "numeric", month: "long", day: "numeric" };
+		return date.toLocaleDateString("en-US", options);
+	}
+
+	function sortEventsByDate(events) {
+		return [...events].sort((a, b) => a.event_timestamp - b.event_timestamp);
+	}
+
+	function filterEvents() {
+		const sortedEvents = sortEventsByDate(allTimelineEvents);
+
+		if (activeView === "daily") {
+			return sortedEvents.filter((event) => {
+				const eventDate = parseEpochToDate(event.event_timestamp);
+				return (
+					eventDate &&
+					eventDate.getDate() === currentDisplayDate.getDate() &&
+					eventDate.getMonth() === currentDisplayDate.getMonth() &&
+					eventDate.getFullYear() === currentDisplayDate.getFullYear()
+				);
+			});
+		} else if (activeView === "weekly") {
+			const startOfWeek = new Date(currentDisplayDate);
+			startOfWeek.setHours(0, 0, 0, 0);
+			startOfWeek.setDate(
+				currentDisplayDate.getDate() - currentDisplayDate.getDay()
+			);
+
+			const endOfWeek = new Date(startOfWeek);
+			endOfWeek.setDate(startOfWeek.getDate() + 6);
+			endOfWeek.setHours(23, 59, 59, 999);
+
+			return sortedEvents.filter((event) => {
+				const eventDate = parseEpochToDate(event.event_timestamp);
+				return eventDate && eventDate >= startOfWeek && eventDate <= endOfWeek;
+			});
+		} else { 
+			return sortedEvents.filter((event) => {
+				const eventDate = parseEpochToDate(event.event_timestamp);
+				return (
+					eventDate &&
+					eventDate.getMonth() === currentDisplayDate.getMonth() &&
+					eventDate.getFullYear() === currentDisplayDate.getFullYear()
+				);
+			});
+		}
+	}
+
+	function navigateTimeline(direction) {
+		const newDate = new Date(currentDisplayDate);
+		if (activeView === "daily") {
+			newDate.setDate(
+				currentDisplayDate.getDate() + (direction === "left" ? -1 : 1)
+			);
+		} else if (activeView === "weekly") {
+			newDate.setDate(
+				currentDisplayDate.getDate() + (direction === "left" ? -7 : 7)
+			);
+		} else { 
+			newDate.setMonth(
+				currentDisplayDate.getMonth() + (direction === "left" ? -1 : 1)
+			);
+		}
+		currentDisplayDate = newDate;
+		displayedTimelineEvents = filterEvents();
+	}
+
+	function changeView(view) {
+		activeView = view;
+		displayedTimelineEvents = filterEvents();
+	}
+
+	function getPosition(index, total) {
+		const minPosition = 5;
+		const maxPosition = 95;
+		const availableSpace = maxPosition - minPosition;
+
+		if (total === 1) return 50; 
+		return minPosition + (availableSpace / (total - 1)) * index;
+	}
+
+	function setupMobileMenu() {
+		const hamburger = document.getElementById("hamburger-menu");
+		const sidebar = document.getElementById("mobile-sidebar");
+		const overlay = document.getElementById("overlay");
+
+		if (hamburger && sidebar && overlay) { 
+			hamburger.addEventListener("click", function () {
+				sidebar.classList.toggle("active");
+				overlay.style.display = sidebar.classList.contains("active")
+					? "block"
+					: "none";
+			});
+
+			overlay.addEventListener("click", function () {
+				sidebar.classList.remove("active");
+				overlay.style.display = "none";
+			});
+
+			const sidebarLinks = sidebar.querySelectorAll("a");
+			sidebarLinks.forEach((link) => {
+				link.addEventListener("click", function () {
+					sidebar.classList.remove("active");
+					overlay.style.display = "none";
+				});
+			});
+		}
+	}
+
+	onMount(async () => {
+		setupMobileMenu();
+	});
 </script>
 
 <svelte:head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    href="https://fonts.googleapis.com/css?family=Mulish"
-    rel="stylesheet"
-  />
-  <link href="https://fonts.googleapis.com/css?family=Inter" rel="stylesheet" />
-  <link href="{base}/css/styles.css" rel="stylesheet" />
-  <title>Vehicle Detail</title>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link
+		href="https://fonts.googleapis.com/css?family=Mulish"
+		rel="stylesheet"
+	/>
+	<link href="https://fonts.googleapis.com/css?family=Inter" rel="stylesheet" />
+	<link href="{base}/css/styles.css" rel="stylesheet" />
+	<title>Vehicle Detail</title>
 </svelte:head>
 
 <header>
-  <div class="header-container">
-    <div class="top-header">
-      <a class="top-header-link" href="https://berrys.com">berrys.com</a>
-      <a class="top-header-link" href=" ">Contact Us</a>
-    </div>
-    <div class="header">
-      <div
-        class="header-background"
-        style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
-      ></div>
-      <div class="hamburger-menu" id="hamburger-menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-      <a href="{base}/home">Home</a>
-      <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-      <a href="{base}/vehicle-logging">Vehicle Logging</a>
-      <a href="{base}/site-data">Site Data</a>
-      <a href="{base}/inventory">Inventory</a>
-      <a href="{base}/analytics">Analytics</a>
-      <input type="text" placeholder="Search..." />
-      <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
-    </div>
-  </div>
+	<div class="header-container">
+		<div class="top-header">
+			<a class="top-header-link" href="https://berrys.com">berrys.com</a>
+			<a class="top-header-link" href=" ">Contact Us</a>
+		</div>
+		<div class="header">
+			<div
+				class="header-background"
+				style="background: url({base}/svg/Vector_1.svg) no-repeat left center; mask-image: url({base}/svg/Vector_1.svg'); -webkit-mask-image: url({base}/svg/Vector_1.svg);"
+			></div>
+			<div class="hamburger-menu" id="hamburger-menu">
+				<span></span>
+				<span></span>
+				<span></span>
+			</div>
+			<a href="{base}/home">Home</a>
+			<a href="{base}/cross-drops">Cross-Drop Prevention</a>
+			<a href="{base}/vehicle-logging">Vehicle Logging</a>
+			<a href="{base}/site-data">Site Data</a>
+			<a href="{base}/inventory">Inventory</a>
+			<a href="{base}/analytics">Analytics</a>
+			<input type="text" placeholder="Search..." />
+			<img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
+		</div>
+	</div>
 </header>
 
 <div class="mobile-sidebar" id="mobile-sidebar" class:active={isSidebarActive}>
-  <a href="{base}/home">Home</a>
-  <a href="{base}/vehicle-logging">Vehicle Logging</a>
-  <a href="{base}/cross-drops">Cross-Drop Prevention</a>
-  <a href="{base}/site-data">Site Data</a>
-  <a href="{base}/inventory">Inventory</a>
-  <a href="{base}/analytics">Analytics</a>
-  <span class="footer-text"
-    >Contact Us <br />
-    Berrys Technologies Ltd 141 Lichfield Road, Birmingham , B6 5SP , United Kingdom
-    <br />
-    0121 558 4411 <br />
-    enquiries@berrys.com</span
-  >
+	<a href="{base}/home">Home</a>
+	<a href="{base}/vehicle-logging">Vehicle Logging</a>
+	<a href="{base}/cross-drops">Cross-Drop Prevention</a>
+	<a href="{base}/site-data">Site Data</a>
+	<a href="{base}/inventory">Inventory</a>
+	<a href="{base}/analytics">Analytics</a>
+	<span class="footer-text"
+		>Contact Us <br />
+		Berrys Technologies Ltd 141 Lichfield Road, Birmingham , B6 5SP , United Kingdom
+		<br />
+		0121 558 4411 <br />
+		enquiries@berrys.com</span
+	>
 </div>
 
 <div class="overlay" id="overlay"></div>
 
 <div class="sub-header-container">
-  <div class="sub-header">
-    <img src="{base}/images/Truck_graphic.png" alt="truck_graphic" />
-    <h1>Vehicle {trailer}</h1>
-    <span>
-      Using the time line, hover your mouse above each event to find the
-      delivery detail. You can set the timeline to show delivery daily, weekly
-      or monthly.
-    </span>
-  </div>
-  <div class="breadcrumb">
-    <a href="{base}/home">Home</a><a
-      href="#"
-      on:click|preventDefault={handleBreadcrumbNavigation}>{previousURL}</a
-    >/<span> Vehicle Details</span>
-  </div>
+	<div class="sub-header">
+		<img src="{base}/images/Truck_graphic.png" alt="truck_graphic" />
+		<h1>Vehicle {trailer}</h1>
+		<span>
+			Using the time line, hover your mouse above each event to find the
+			delivery detail. You can set the timeline to show delivery daily, weekly
+			or monthly.
+		</span>
+	</div>
+	<div class="breadcrumb">
+		<a href="{base}/home">Home</a>
+        {#if previousURL}
+		<a href="#" on:click|preventDefault={handleBreadcrumbNavigation}>{previousURL}</a>
+        {:else}
+        <a href="{base}/vehicle-logging">Vehicle Logging</a>
+        {/if}
+		/<span> Vehicle Details</span>
+	</div>
 </div>
 
 <main>
-  <div class="main-container">
-    <span class="main-container-header"> Timeline </span>
+	<div class="main-container">
+		<span class="main-container-header"> Timeline </span>
 
-    <div class="search-fields">
-      <div class="field-pair">
-        <label for="search-by">Search By:</label>
-        <select id="search-by" name="dates" bind:value={searchBy}>
-          <option value="day">Day</option>
-          <option value="month">Month</option>
-          <option value="year">Year</option>
-        </select>
-      </div>
+		<div class="search-fields">
+			<div class="field-pair">
+				<label for="search-by">Search By:</label>
+				<select id="search-by" name="dates" bind:value={searchBy}>
+					<option value="day">Day</option>
+					<option value="month">Month</option>
+					<option value="year">Year</option>
+				</select>
+			</div>
 
-      <div class="field-pair">
-        <label for="select">Select:</label>
+			<div class="field-pair">
+				<label for="select">Select:</label>
 
-        {#if searchBy === "day"}
-          <select id="select" bind:value={selectedValue}>
-            <option value="" disabled selected>Select a day</option>
-            {#each dayOptions as day}
-              <option value={day}>{day}</option>
-            {/each}
-          </select>
-        {:else if searchBy === "month"}
-          <select id="select" bind:value={selectedValue}>
-            <option value="" disabled selected>Select a month</option>
-            {#each monthOptions as month}
-              <option value={month.value}>{month.label}</option>
-            {/each}
-          </select>
-        {:else if searchBy === "year"}
-          <select id="select" bind:value={selectedValue}>
-            <option value="" disabled selected>Select a year</option>
-            {#each yearOptions as year}
-              <option value={year}>{year}</option>
-            {/each}
-          </select>
-        {/if}
-      </div>
+				{#if searchBy === "day"}
+					<select id="select" bind:value={selectedValue}>
+						<option value="" disabled selected>Select a day</option>
+						{#each dayOptions as day}
+							<option value={day}>{day}</option>
+						{/each}
+					</select>
+				{:else if searchBy === "month"}
+					<select id="select" bind:value={selectedValue}>
+						<option value="" disabled selected>Select a month</option>
+						{#each monthOptions as month}
+							<option value={month.value}>{month.label}</option>
+						{/each}
+					</select>
+				{:else if searchBy === "year"}
+					<select id="select" bind:value={selectedValue}>
+						<option value="" disabled selected>Select a year</option>
+						{#each yearOptions as year}
+							<option value={year}>{year}</option>
+						{/each}
+					</select>
+				{/if}
+			</div>
 
-      <div class="field-pair">
-        <button
-          class="go-to-btn"
-          on:click={goToSelectedDate}
-          disabled={!selectedValue}
-        >
-          Go To
-        </button>
-      </div>
-    </div>
+			<div class="field-pair">
+				<button
+					class="go-to-btn"
+					on:click={goToSelectedDate}
+					disabled={!selectedValue}
+				>
+					Go To
+				</button>
+			</div>
+		</div>
 
-    <div class="timeline-navigation desktop-timeline">
-      <img
-        src="{base}/svg/left-arrow.svg"
-        alt="left-arrow"
-        class="left-arrow"
-        on:click={() => navigateTimeline("left")}
-      />
+		<div class="timeline-navigation desktop-timeline">
+			<img
+				src="{base}/svg/left-arrow.svg"
+				alt="left-arrow"
+				class="left-arrow"
+				on:click={() => navigateTimeline("left")}
+			/>
 
-      <div class="timeline-container">
-        <div class="current-period">
-          {#if timelineLoading}
-            Loading...
-          {:else if timelineError}
-            Error
-          {:else}
-            {formatDisplayDate(currentDisplayDate)}
-          {/if}
-        </div>
+			<div class="timeline-container">
+				<div class="current-period">
+					{#if timelineLoading}
+						Loading...
+					{:else if timelineError}
+						Error
+					{:else}
+						{formatDisplayDate(currentDisplayDate)}
+					{/if}
+				</div>
 
-        <div class="timeline">
-          <div class="timeline-line"></div>
+				<div class="timeline">
+					<div class="timeline-line"></div>
 
-          {#if timelineLoading}
-            <div
-              class="loading-message"
-              style="text-align: center; width: 100%;"
-            >
-              Loading events...
-            </div>
-          {:else if timelineError}
-            <div class="error-message" style="text-align: center; width: 100%;">
-              {timelineError}
-            </div>
-          {:else if displayedTimelineEvents.length > 0}
-            {#each displayedTimelineEvents as event, i}
-              <div
-                class="timeline-event"
-                style="left: {getPosition(i, displayedTimelineEvents.length)}%"
-              >
-                <div class="timeline-dot"></div>
-                <div class="timeline-date">
-                  {formatEventDate(event.event_timestamp)}
-                </div>
-                <div class="timeline-popup">
-                  <h3>{event.Address}, {event.City}, {event.State}</h3>
-                  <p>
-                    <strong>Date:</strong>
-                    {formatEventDate(event.event_timestamp)}
-                  </p>
-                  <p>
-                    <strong>Time:</strong>
-                    {formatEpochToTime(event.event_timestamp)}
-                  </p>
-                  <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
-                  <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
-                  <p>
-                    <strong>Product:</strong>
-                    {event["Prevented Delivery "] || event.Delivered}
-                  </p>
-                  <button
-                    on:click={() => openDetails(event)}
-                    class="more-details"
-                  >
-                    See Delivery Details
-                  </button>
-                </div>
-              </div>
-            {/each}
-          {:else}
-            <div class="no-events">No events to display for this period</div>
-          {/if}
-        </div>
+					{#if timelineLoading}
+						<div
+							class="loading-message"
+							style="text-align: center; width: 100%;"
+						>
+							Loading events...
+						</div>
+					{:else if timelineError}
+						<div class="error-message" style="text-align: center;">
+							{timelineError}
+						</div>
+					{:else if displayedTimelineEvents.length > 0}
+						{#each displayedTimelineEvents as event, i}
+							<div
+								class="timeline-event"
+								style="left: {getPosition(i, displayedTimelineEvents.length)}%"
+							>
+								<div class="timeline-dot"></div>
+								<div class="timeline-date">
+									{formatEventDate(event.event_timestamp)}
+								</div>
+								<div class="timeline-popup">
+									<h3>{event.Address}, {event.City}, {event.State}</h3>
+									<p>
+										<strong>Date:</strong>
+										{formatEventDate(event.event_timestamp)}
+									</p>
+									<p>
+										<strong>Time:</strong>
+										{formatEpochToTime(event.event_timestamp)}
+									</p>
+									<p><strong>Tank #:</strong> {event["Tank No. "]}</p>
+									<p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
+									<p>
+										<strong>Product:</strong>
+										{event["Prevented Delivery "] || event.Delivered}
+									</p>
+									<button
+										on:click={() => openDetails(event)}
+										class="more-details"
+									>
+										See Delivery Details
+									</button>
+								</div>
+							</div>
+						{/each}
+					{:else}
+						<div class="no-events">No events to display for this period</div>
+					{/if}
+				</div>
 
-        <div class="timeline-controls">
-          <button
-            class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
-            on:click={() => changeView("daily")}
-          >
-            Daily
-          </button>
-          <button
-            class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
-            on:click={() => changeView("weekly")}
-          >
-            Weekly
-          </button>
-          <button
-            class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
-            on:click={() => changeView("monthly")}
-          >
-            Monthly
-          </button>
-        </div>
-      </div>
+				<div class="timeline-controls">
+					<button
+						class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
+						on:click={() => changeView("daily")}
+					>
+						Daily
+					</button>
+					<button
+						class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
+						on:click={() => changeView("weekly")}
+					>
+						Weekly
+					</button>
+					<button
+						class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
+						on:click={() => changeView("monthly")}
+					>
+						Monthly
+					</button>
+				</div>
+			</div>
 
-      <img
-        src="{base}/svg/right-arrow.svg"
-        alt="right-arrow"
-        class="right-arrow"
-        on:click={() => navigateTimeline("right")}
-      />
-    </div>
+			<img
+				src="{base}/svg/right-arrow.svg"
+				alt="right-arrow"
+				class="right-arrow"
+				on:click={() => navigateTimeline("right")}
+			/>
+		</div>
 
-    <div class="mobile-timeline">
-      <div class="current-period">
-        {#if timelineLoading}
-          Loading...
-        {:else if timelineError}
-          Error
-        {:else}
-          {formatDisplayDate(currentDisplayDate)}
-        {/if}
-      </div>
+		<div class="mobile-timeline">
+			<div class="current-period">
+				{#if timelineLoading}
+					Loading...
+				{:else if timelineError}
+					Error
+				{:else}
+					{formatDisplayDate(currentDisplayDate)}
+				{/if}
+			</div>
 
-      <div class="vertical-timeline">
-        {#if displayedTimelineEvents.length > 0}
-          <div class="timeline-line"></div>
-        {/if}
+			<div class="vertical-timeline">
+				{#if displayedTimelineEvents.length > 0}
+					<div class="timeline-line"></div>
+				{/if}
 
-        {#if timelineLoading}
-          <div class="loading-message" style="text-align: center;">
-            Loading events...
-          </div>
-        {:else if timelineError}
-          <div class="error-message" style="text-align: center;">
-            {timelineError}
-          </div>
-        {:else if displayedTimelineEvents.length > 0}
-          {#each displayedTimelineEvents as event, i}
-            <div
-              class="vertical-timeline-event {i % 2 === 0 ? 'left' : 'right'}"
-            >
-              <div class="timeline-dot"></div>
-              <div class="timeline-date">
-                {formatEventDate(event.event_timestamp)}
-              </div>
-              <div class="timeline-popup">
-                <h3>{event.Address}, {event.City}, {event.State}</h3>
-                <p>
-                  <strong>Date:</strong>
-                  {formatEventDate(event.event_timestamp)}
-                </p>
-                <p>
-                  <strong>Time:</strong>
-                  {formatEpochToTime(event.event_timestamp)}
-                </p>
-                <p><strong>Tank #:</strong> {event["Tank No. "]}</p>
-                <p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
-                <p>
-                  <strong>Product:</strong>
-                  {event["Prevented Delivery "] || event.Delivered}
-                </p>
-                <button
-                  on:click={() => openDetails(event)}
-                  class="more-details"
-                >
-                  See Delivery Details
-                </button>
-              </div>
-            </div>
-          {/each}
-        {:else}
-          <div class="no-events">No events to display for this period</div>
-        {/if}
-      </div>
+				{#if timelineLoading}
+					<div class="loading-message" style="text-align: center;">
+						Loading events...
+					</div>
+				{:else if timelineError}
+					<div class="error-message" style="text-align: center;">
+						{timelineError}
+					</div>
+				{:else if displayedTimelineEvents.length > 0}
+					{#each displayedTimelineEvents as event, i}
+						<div
+							class="vertical-timeline-event {i % 2 === 0 ? 'left' : 'right'}"
+						>
+							<div class="timeline-dot"></div>
+							<div class="timeline-date">
+								{formatEventDate(event.event_timestamp)}
+							</div>
+							<div class="timeline-popup">
+								<h3>{event.Address}, {event.City}, {event.State}</h3>
+								<p>
+									<strong>Date:</strong>
+									{formatEventDate(event.event_timestamp)}
+								</p>
+								<p>
+									<strong>Time:</strong>
+									{formatEpochToTime(event.event_timestamp)}
+								</p>
+								<p><strong>Tank #:</strong> {event["Tank No. "]}</p>
+								<p><strong>Trailer #:</strong> {event["Trailer No."]}</p>
+								<p>
+									<strong>Product:</strong>
+									{event["Prevented Delivery "] || event.Delivered}
+								</p>
+								<button
+									on:click={() => openDetails(event)}
+									class="more-details"
+								>
+									See Delivery Details
+								</button>
+							</div>
+						</div>
+					{/each}
+				{:else}
+					<div class="no-events">No events to display for this period</div>
+				{/if}
+			</div>
 
-      <div class="timeline-controls">
-        <img
-          src="{base}/svg/left-arrow.svg"
-          alt="left-arrow"
-          class="left-arrow"
-          on:click={() => navigateTimeline("left")}
-        />
-        <button
-          class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
-          on:click={() => changeView("daily")}
-        >
-          Daily
-        </button>
-        <button
-          class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
-          on:click={() => changeView("weekly")}
-        >
-          Weekly
-        </button>
-        <button
-          class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
-          on:click={() => changeView("monthly")}
-        >
-          Monthly
-        </button>
-        <img
-          src="{base}/svg/right-arrow.svg"
-          alt="right-arrow"
-          class="right-arrow"
-          on:click={() => navigateTimeline("right")}
-        />
-      </div>
-    </div>
+			<div class="timeline-controls">
+				<img
+					src="{base}/svg/left-arrow.svg"
+					alt="left-arrow"
+					class="left-arrow"
+					on:click={() => navigateTimeline("left")}
+				/>
+				<button
+					class="timeline-view-btn {activeView === 'daily' ? 'active' : ''}"
+					on:click={() => changeView("daily")}
+				>
+					Daily
+				</button>
+				<button
+					class="timeline-view-btn {activeView === 'weekly' ? 'active' : ''}"
+					on:click={() => changeView("weekly")}
+				>
+					Weekly
+				</button>
+				<button
+					class="timeline-view-btn {activeView === 'monthly' ? 'active' : ''}"
+					on:click={() => changeView("monthly")}
+				>
+					Monthly
+				</button>
+				<img
+					src="{base}/svg/right-arrow.svg"
+					alt="right-arrow"
+					class="right-arrow"
+					on:click={() => navigateTimeline("right")}
+				/>
+			</div>
+		</div>
 
-    <div class="other-vehicle">
-      {#if anotherVehicleInputError}
-      <div class="input-error">{anotherVehicleInputError}</div>
-    {/if}
-      <label for="another-vehicle">
-        Looking for another vehicle? Search:
-      </label>
-      <input
-        id="another-vehicle"
-        class="another-vehicle"
-        bind:value={anotherVehicleInput}
-      />
-      <button
-        class="another-vehicle"
-        style="color:white;background-color:#014B96"
-        on:click={handleGotoVehicle}
-      >
-        Go to Vehicle
-      </button>
- 
-    </div>
-  </div>
+		<div class="other-vehicle">
+			{#if anotherVehicleInputError}
+			<div class="input-error">{anotherVehicleInputError}</div>
+		{/if}
+			<label for="another-vehicle">
+				Looking for another vehicle? Search:
+			</label>
+			<input
+				id="another-vehicle"
+				class="another-vehicle"
+				bind:value={anotherVehicleInput}
+			/>
+			<button
+				class="another-vehicle"
+				style="color:white;background-color:#014B96"
+				on:click={handleGotoVehicle}
+			>
+				Go to Vehicle
+			</button>
+		</div>
+	</div>
 </main>
 
 <footer>
-  <div
-    style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
-  >
-    <span style="font-size: 1rem; font-family: Mulish;"
-      >@copyrights Berrys Global Innovations</span
-    >
-    <img src="{base}/images/logo.png" alt="Berrys Logo" />
-  </div>
+	<div
+		style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
+	>
+		<span style="font-size: 1rem; font-family: Mulish;"
+			>@copyrights Berrys Global Innovations</span
+		>
+		<img src="{base}/images/logo.png" alt="Berrys Logo" />
+	</div>
 </footer>
-
 <style>
   * {
     box-sizing: border-box;
@@ -1166,7 +1139,6 @@
     cursor: not-allowed;
   }
 
-  /* Update the search fields layout for better alignment */
   .search-fields {
     display: flex;
     flex-direction: row;
@@ -1191,7 +1163,6 @@
     max-width: 100%;
   }
 
-  /* Mobile Timeline Styles */
   .mobile-timeline {
     display: none;
   }
