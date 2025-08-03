@@ -4,31 +4,18 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { get } from "svelte/store";
+  export let data;
+
   const currentPath = get(page).url.pathname;
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
-  function saveStateToSession() {
-    const state = {
-      address: $page.state?.address,
-      city: $page.state?.city,
-      state: $page.state?.state,
-      date: $page.state?.date,
-      siteCode: $page.state?.siteCode,
-      from: $page.state?.from,
-    };
-    localStorage.setItem("deliveryDetailState", JSON.stringify(state));
-  }
-
-  function loadStateFromSession() {
-    const savedState = localStorage.getItem("deliveryDetailState");
-    if (savedState) {
-      const state = JSON.parse(savedState);
-      $page.state = {
-        ...$page.state,
-        ...state,
-      };
-    }
-  }
-
+  $: deliveryDetails = data.deliveryEvents;
+  $: siteCode = data.siteCode;
+  $: locationDetails = data.locationData;
+  $: address = locationDetails?.address;
+  $: city = locationDetails?.city;
+  $: State = locationDetails?.state;
+  $: previousURL = $page.state?.from;
+ 
   function gotoVehicle() {
     saveStateToSession();
     goto(`${base}/vehicle/HDY674`, {
@@ -39,12 +26,6 @@
     });
   }
 
-  $: address = $page.state?.address;
-  $: city = $page.state?.city;
-  $: State = $page.state?.state;
-  $: date = $page.state?.date;
-  $: siteCode = $page.state?.siteCode;
-  $: previousURL = $page.state?.from;
 
   function formatDate(dateString) {
     if (!dateString) return "";
@@ -275,8 +256,9 @@
   }
   onMount(() => {
     setupMobileMenu();
-    loadStateFromSession();
+    console.log("locations details are: " ,locationDetails);
   });
+
 </script>
 
 <svelte:head>
@@ -347,11 +329,11 @@
   <div class="sub-header">
     <img src="{base}/images/Gas_station_graphic.png" alt="gas_station" />
     <h1>
-      Delivery Detail <span class="mobile-delivery-date"
-        >-{formatDate(date)}
+      Delivery Details for <span class="mobile-delivery-date"
+        >{address}
       </span>
     </h1>
-    <span> View below delivery details from {formatDate(date)} </span>
+    <span> View below delivery details for this site code. </span>
   </div>
   <div class="breadcrumb">
     <a href="{base}/home">Home</a><a href="{base}{previousURL}">{previousURL}</a
