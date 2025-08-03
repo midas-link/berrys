@@ -12,6 +12,8 @@
     let isLoading = true;
     let verificationMessage = '';
     let verificationError = false;
+    let editingUserId = null;
+
     function formatEpochToDisplay(timestamp) {
     const date = new Date(timestamp);
      return date.toLocaleString("en-GB", {
@@ -22,13 +24,58 @@
         minute: "2-digit",
         hour12: false,
      }).replace(/\//g,"-");
+    }
+    function editBusinessUnit(userId) {
+    editingUserId = userId;
   }
+   function cancelEdit() {
+    editingUserId = null;
+  }
+  async function saveBusinessUnit(userId, newBusinessUnit) {
+        try {
+            const response = await fetch('/api/admin/setBusinessUnit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    selectedUserIds: [userId],
+                    buName: newBusinessUnit
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                users = users.map(user => {
+                    if (user.user_id === userId) {
+                        return { ...user, business_unit: newBusinessUnit };
+                    }
+                    return user;
+                });
+                
+                verificationError = false;
+                verificationMessage = data.message || `Business unit for user ${userId} updated successfully.`;
+            } else {
+                verificationError = true;
+                verificationMessage = data.error || `Failed to update business unit for user ${userId}.`;
+                console.error('API Error:', data.error);
+            }
+        } catch (err) {
+            verificationError = true;
+            verificationMessage = `An error occurred: ${err.message}`;
+            console.error('Client-side Error:', err);
+        } finally {
+            editingUserId = null;
+        }
+    }
   function searchUser(searchedUser) {
     filteredUsers = [];
     if(searchedUser.length===0) 
       filtered= false;
     users.forEach(element => {
-      if(element.email.includes(searchedUser))
+    if (element.email?.includes(searchedUser) || element.first_name?.includes(searchedUser) || element.last_name?.includes(searchedUser)) 
         {
         filteredUsers.push(element);
         filtered= true;
@@ -158,7 +205,7 @@
                   <th>Email</th>
                   <th>Phone Number</th>
                   <th>Is Admin</th>
-                  <th>Last Login</th>
+                  <th>Business Unit</th>
                   <th>Verification Status</th>
                   <th>Verify user</th>
                 </tr>
@@ -175,23 +222,36 @@
     {:else if (filtered ? filteredUsers : users).length > 0}
     {#each (filtered ? filteredUsers : users) as row, index}
         <tr>
-           <td>{row.user_id}</td> 
-           <td>{row.first_name} {row.last_name}</td>
-           <td>{row.title} </td>
-           <td>{row.company_name}</td>
-           <td>{row.email}</td>
-           <td>{row.phone_number}</td>
-           <td>{row.is_admin ? "Yes" : "No"}</td>
-           <td>{formatEpochToDisplay(row.last_login)}</td>
-           <td>{row.verify_user ? "Verified" : "Not verified"}</td>
-           <td><input type="checkbox" bind:group={selectedUserIds} value={row.user_id} disabled={row.verify_user}> </td>
+           <td data-label="User ID">{row.user_id}</td> 
+           <td data-label="Full Name">{row.first_name} {row.last_name}</td>
+           <td data-label="Title">{row.title} </td>
+           <td data-label="Company Name">{row.company_name}</td>
+           <td data-label="Email">{row.email}</td>
+           <td data-label="Phone Number">{row.phone_number}</td>
+           <td data-label="Is Admin">{row.is_admin ? "Yes" : "No"}</td>
+           <td data-label="Business Unit" class="business-unit-cell">
+            {#if editingUserId === row.user_id}
+              <div class="edit-mode-container">
+                <input type="text" bind:value={row.business_unit} placeholder="Business Unit" />
+                <button on:click={() => saveBusinessUnit(row.user_id, row.business_unit)} class="header-btn" type="button">Save</button>
+                <button on:click={() => cancelEdit()} type="button" class="header-btn">Cancel</button>
+              </div>
+            {:else}
+              <div class="view-mode-container">
+                {row.business_unit}
+                <button on:click={() => editBusinessUnit(row.user_id, row.business_unit)} class="header-btn" type="button">Edit</button>
+              </div>
+            {/if}
+          </td>
+          <td data-label="Verification Status">{row.verify_user ? "Verified" : "Not verified"}</td>
+           <td data-label="Verify user"><input type="checkbox" bind:group={selectedUserIds} value={row.user_id} disabled={row.verify_user}> </td>
         </tr>
         {/each}
     {/if}
     </tbody>
     </table>
-    <button type="submit" class="header-btn" style="position:absolute;margin-right:2%;right:0;"> Verify Selected Users </button>
-    </form>
+    <button type="submit" class="header-btn verify-button-desktop" > Verify Selected Users </button>
+    <button type="submit" class="header-btn verify-button-mobile"> Verify Selected Users </button>    </form>
     </div>
     </div> 
     <footer>
@@ -219,7 +279,6 @@
     margin: 0;
 }
   table {
-    display: block;
     margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
@@ -230,6 +289,7 @@
     border-radius: 10px;
     position: relative;
     margin-bottom: 5vh;
+    table-layout: fixed;
   }
   thead {
     position: sticky;
@@ -238,13 +298,11 @@
     background-color: #004b96;
   }
   tbody {
-    display: block;
     overflow-y: auto;
     width: 100%;
   }
   thead tr,
   tbody tr {
-    display: table;
     width: 100%;
     table-layout: fixed;
   }
@@ -259,6 +317,7 @@
     font-family: "Mulish", sans-serif;
     text-align: center;
     padding: 16px !important;
+    white-space: nowrap;
   }
   table th {
     padding-left: 1vw;
@@ -271,7 +330,6 @@
   }
   tr {
     transition: all 0.3s ease;
-    cursor: pointer;
   }
   .header-btn {
     background: #014B96;
@@ -286,9 +344,7 @@
 .header-btn:hover {
     background: #013b77;
 }
-.header-btn:last-child{
-  margin-left: 2vw;
-}
+
 .search-bar{
   background: #014B96;
   color: white;
@@ -301,5 +357,126 @@
 }
 .search-bar::placeholder{
   color:white;
+}
+.data-container {
+    overflow-x: auto; 
+  }
+
+  .desktop-view {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .desktop-view thead {
+    background-color: #004b96;
+    color: white;
+  }
+  .desktop-view th, .desktop-view td {
+    padding: 16px;
+    text-align: center;
+    font-family: "Mulish", sans-serif;
+    border: 1px solid #ddd; 
+  }
+  .desktop-view th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .desktop-view tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+
+  .verify-button-desktop {
+    display: block;
+  }
+  .verify-button-mobile {
+    display: none;
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .desktop-view, .desktop-view thead, .desktop-view tbody, .desktop-view th, .desktop-view td, .desktop-view tr {
+      display: block;
+    }
+
+    .desktop-view thead tr {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+    }
+
+    .desktop-view tr {
+      border: 1px solid #ccc;
+      margin-bottom: 1rem;
+    }
+
+    .desktop-view td {
+      border: none;
+      border-bottom: 1px solid #eee;
+      position: relative;
+      padding-left: 50% !important; 
+      text-align: right;
+    }
+
+    .desktop-view td::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 0;
+      width: 45%; 
+      padding-left: 15px;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    .verify-button-desktop {
+      display: none;
+    }
+    .verify-button-mobile {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .search-bar {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+  }
+  .edit-mode-container {
+    display: flex;
+    align-items: center;
+    gap: 5px; 
+    justify-content: center; 
+    flex-wrap: nowrap; 
+}
+.edit-mode-container input[type="text"] {
+    width: 100px; 
+}
+.business-unit-cell {
+     white-space: nowrap; 
+}
+.business-unit-cell .view-mode-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.edit-mode-container button, .view-mode-container button {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    white-space: nowrap; 
 }
 </style>
