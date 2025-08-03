@@ -11,7 +11,6 @@
   }
 
   onMount(() => {
-    // Bar Chartz
     barInstance = new Chart(barCanvas, {
       type: "bar",
       data: {
@@ -42,9 +41,10 @@
       },
       options: {
         responsive: true,
+        aspectRatio: 0.9,
         plugins: {
           legend: { display: true },
-          title: { display: true, text: "Random Bar Chart" }
+          title: { display: true, text: "Product Bar Chart" }
         }
       }
     });
@@ -201,7 +201,6 @@
       </div>
     </div>
   </header>
-  <!-- Mobile sidebar navigation -->
   <div class="mobile-sidebar" id="mobile-sidebar">
     <a href="{base}/home">Home</a>
     <a href="{base}/vehicle-logging">Vehicle Logging</a>
@@ -222,21 +221,25 @@
 <main>
   <div class="main-container">
     <h1>Analytics Dashboard</h1>
-    <div style="display: flex; flex-wrap: wrap; gap: 2rem;justify-content:center">
-      <div style="flex: 1 1 300px; max-width: 400px;">
-        <canvas bind:this={barCanvas} width="400" height="300"></canvas>
+    <div style="display: grid;  grid-template-columns: auto auto auto; gap: 2rem;justify-content:center;padding-bottom:3rem;">
+      <div style="max-width: 400px;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+        <canvas bind:this={barCanvas} ></canvas>
+        <p>The X product is being sold the most in the state of Arizona</p>
       </div>
-      <div style="flex: 1 1 300px; max-width: 400px;">
-        <canvas bind:this={lineCanvas} width="400" height="300"></canvas>
+      <div style=" max-width: 400px;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+        <canvas bind:this={lineCanvas} ></canvas>
+        <p>In X the number of cross drops were at a high</p>
       </div>
-      <div style="flex: 1 1 300px; max-width: 400px;">
-        <canvas bind:this={pieCanvas} width="400" height="300"></canvas>
+      <div style=" max-width: 400px;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+        <canvas bind:this={pieCanvas} ></canvas>
+        <p>State X was the busiest state</p>
       </div>
-      <div style="flex: 1 1 300px; max-width: 400px;">
-        <canvas bind:this={doughnutCanvas} width="400" height="300"></canvas>
+      <div style=" max-width: 400px;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+        <canvas bind:this={doughnutCanvas} ></canvas>
+        <p>There were X amount of late deliveries</p>
       </div>
-      <div style="flex: 1 1 300px; max-width: 400px;">
-        <canvas bind:this={radarCanvas} width="400" height="300"></canvas>
+      <div style="max-width: 400px;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+        <canvas bind:this={radarCanvas} ></canvas>
       </div>
     </div>
   </div>
@@ -256,7 +259,7 @@
     box-sizing: border-box;
   }
   main {
-    flex: 1;
+    flex:1;
   }
   ::placeholder {
     color: #ffffff;
