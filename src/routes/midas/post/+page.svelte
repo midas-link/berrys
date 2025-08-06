@@ -12,10 +12,70 @@
     let End_Time = '';
     let responseMessage = '';
     let isError = false;
+    let macAddressError = '';
+    let isMacAddressValid = false;
+
+    function validateMacAddress(mac) {
+        mac = mac.trim();
+        
+   
+        const macPatterns = [
+            /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/, // XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
+            /^([0-9A-Fa-f]{2}\.){5}([0-9A-Fa-f]{2})$/, // XX.XX.XX.XX.XX.XX
+            /^[0-9A-Fa-f]{12}$/ // XXXXXXXXXXXX (no separators)
+        ];
+        
+        return macPatterns.some(pattern => pattern.test(mac));
+    }
+
+    function formatMacAddress(mac) {
+        mac = mac.replace(/[^0-9A-Fa-f]/g, '');
+        
+        mac = mac.toUpperCase();
+        
+        if (mac.length === 12) {
+            return mac.match(/.{2}/g).join(':');
+        }
+        
+        return mac;
+    }
+
+    function handleMacAddressInput(event) {
+        const value = event.target.value;
+        Mac_Address = value;
+        
+        if (value === '') {
+            macAddressError = '';
+            isMacAddressValid = false;
+            return;
+        }
+        
+        isMacAddressValid = validateMacAddress(value);
+        
+        if (!isMacAddressValid) {
+            macAddressError = 'Invalid MAC address format. Use XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, or XXXXXXXXXXXX';
+        } else {
+            macAddressError = '';
+            Mac_Address = formatMacAddress(value);
+        }
+    }
+
     async function sendDataToDatabase() {
+        responseMessage = '';
+        isError = false;
+        
         if(!Mac_Address || !Serial_Number  || !Start_Time || !Tank_No || !Fuel_Name || !Fuel_Type || !Delivery_Status || !Charge_End || !End_Time){
             responseMessage = "Please fill all the fields."
+            isError = true;
+            return;
         }
+        
+        if (!validateMacAddress(Mac_Address)) {
+            responseMessage = "Please enter a valid MAC address before submitting.";
+            isError = true;
+            return;
+        }
+        
         try {
             const response = await fetch("/api/Send_Logs", {
                 method: "POST",
@@ -23,7 +83,7 @@
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    Mac_Address: Mac_Address,
+                    Mac_Address: formatMacAddress(Mac_Address), // Send formatted MAC address
                     Serial_Number: Serial_Number,
                     Start_Time: Start_Time,
                     Tank_No : Tank_No ,
@@ -48,6 +108,7 @@
         }
     }
 </script>
+
 <svelte:head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -60,6 +121,7 @@
   <link rel="stylesheet" href="{base}/css/styles.css">
 
 </svelte:head>
+
 <header>
     <div class="header-container">
         <div class="top-header">
@@ -69,6 +131,7 @@
         </div>
     </div>
 </header>
+
 <main>
     <div class="main-container">
   
@@ -76,10 +139,26 @@
         {#if responseMessage}
         <p style="color: {isError ? "red" : "green"}">{responseMessage}</p>
         {/if}
+        
     <div class="input-duo">
     <label for="Mac_Address">Mac Address:</label>
-    <input type="text" id="Mac_Address" name="Mac_Address" bind:value={Mac_Address} placeholder="Mac Address" required />
+    <input 
+        type="text" 
+        id="Mac_Address" 
+        name="Mac_Address" 
+        bind:value={Mac_Address} 
+        on:input={handleMacAddressInput}
+        placeholder="XX:XX:XX:XX:XX:XX" 
+        required 
+        style="border-color: {macAddressError ? 'red' : isMacAddressValid && Mac_Address ? 'green' : 'initial'}"
+    />
+    {#if macAddressError}
+        <small style="color: red; font-size: 12px; margin-top: 4px; display: block;">Bad Mac Address Format</small>
+    {:else if isMacAddressValid && Mac_Address}
+        <small style="color: green; font-size: 12px; margin-top: 4px; display: block;">✓ Valid MAC address</small>
+    {/if}
     </div>
+    
     <div class="input-duo">
     <label for="Serial_Number">Serial Number:</label>
     <input type="text" id="Serial_Number" name="Serial_Number" bind:value={Serial_Number} placeholder="Serial Number" required />
@@ -131,10 +210,10 @@
     <input type="text" id="End Time" name="End Time" bind:value={End_Time} placeholder="End Time" required />
     </div>
     <button class="submit-button" type="submit"> Submit data </button>
+    <a class="logs-button" style="text-decoration:none;" href="/midas/logs"> Show Logs </a>
 </form>
 </div>
-</main> 
-
+</main>
 
 <footer>
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
@@ -167,7 +246,7 @@ main input{
     padding-top: 1vh;
     padding-bottom: 1vh;
     padding-left: 0.5vw;
-    width: 10vw;
+    width: 15vw;
     border-radius: 10px;
 }
 .main-container {
@@ -185,6 +264,7 @@ main input{
     gap: 1rem;
     margin-bottom: 1rem;
 }
+.logs-button,
 .submit-button {
     padding: 0.75rem 2rem;
     background: #014b96;
