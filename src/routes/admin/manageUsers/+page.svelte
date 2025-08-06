@@ -13,7 +13,7 @@
     let verificationMessage = '';
     let verificationError = false;
     let editingUserId = null;
-
+    let buOptions = [];
     function formatEpochToDisplay(timestamp) {
     const date = new Date(timestamp);
      return date.toLocaleString("en-GB", {
@@ -46,7 +46,7 @@
             });
 
             const data = await response.json();
-
+            
             if (response.ok) {
                 users = users.map(user => {
                     if (user.user_id === userId) {
@@ -143,6 +143,8 @@
             }
 
             users = await response.json(); 
+            const allbuOptions = users.map(BU => BU.business_unit);
+            buOptions = [...new Set(allbuOptions)];
             console.log('Admin users loaded:', users); 
 
         } catch (err) {
@@ -232,7 +234,12 @@
            <td data-label="Business Unit" class="business-unit-cell">
             {#if editingUserId === row.user_id}
               <div class="edit-mode-container">
-                <input type="text" bind:value={row.business_unit} placeholder="Business Unit" />
+                <input type="text" bind:value={row.business_unit} placeholder="Business Unit" list="BuList" />
+                <datalist id="BuList">
+                  {#each buOptions as BusinessUnit }
+                    <option value="{BusinessUnit}"></option>
+                  {/each}
+                </datalist>
                 <button on:click={() => saveBusinessUnit(row.user_id, row.business_unit)} class="header-btn" type="button">Save</button>
                 <button on:click={() => cancelEdit()} type="button" class="header-btn">Cancel</button>
               </div>
