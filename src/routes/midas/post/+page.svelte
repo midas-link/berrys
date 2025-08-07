@@ -98,6 +98,15 @@
         if(response.ok) {
             responseMessage  = data.message || "Data has been successfully sent to the database." 
             isError = false;
+            Mac_Address = '';
+            Serial_Number = '';
+            Start_Time = '';
+            Tank_No = '';
+            Fuel_Name = '';
+            Fuel_Type = '';
+            Delivery_Status = '';
+            Charge_End = '';
+            End_Time = '';
         } else {
             isError = true;
             responseMessage = data.message;
