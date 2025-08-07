@@ -1,7 +1,7 @@
 <script>
     import { onMount } from "svelte";
     import {base} from '$app/paths';
-  import Error from "../../+error.svelte";
+    import Error from "../../+error.svelte";
     let logs_data = '';
     async function fetchLogs() {
         try {
