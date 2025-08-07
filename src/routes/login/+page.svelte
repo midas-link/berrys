@@ -15,7 +15,6 @@
     loginMessage = "";
     isLoginError = false;
     showPopup = false;
-
     try {
       const response = await fetch(`/api/login`, {
         method: "POST",
@@ -37,7 +36,11 @@
         isLoginError = false;
         showPopup = true;
         localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
-        const redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
+        let redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
+        if(data.email.toLowerCase() === 'david@berrys.com') {
+          redirectPath = `${base}/midas/post`;
+        }
+        
 
         setTimeout(() => {
           goto(redirectPath);
