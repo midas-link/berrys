@@ -30,9 +30,11 @@
       });
       const data = await response.json();
       if (response.ok) {
-        message = data.message || "Registration successfull!";
+        message = data.message || "Registration successful! Redirecting you to login page.";
         isError = false;
-        goto(`${base}/login`);
+        setTimeout(() => {
+          goto(`${base}/login`);
+        },3000) 
       } else {
         message = data.error || "Registration failed, please try again.";
         isError = true;
@@ -59,6 +61,9 @@
 <main style="background-image: url({base}/images/Sign-in-page.jpg)">
   <div class="register-container">
     <form on:submit|preventDefault={handleRegister} class="register-form">
+      {#if message}
+    <p style="color: {isError ? 'red' : 'green'};">{message}</p>
+    {/if}
       <p class="register-title">Register your account to view delivery logs</p>
       <div class="form-group solo-input">
         <label for="companyName">Company name</label>
@@ -165,9 +170,6 @@
         </div>
       </div>
     </form>
-    {#if message}
-      <p style="color: {isError ? 'red' : 'green'};">{message}</p>
-    {/if}
   </div>
 </main>
 
