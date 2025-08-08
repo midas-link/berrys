@@ -143,13 +143,13 @@
                     <p>{summaryData.total_products}</p>
                 </div>
             </a>
-            <!-- <a href="{base}/admin/contractors" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
+            <a href="{base}/admin/contractors" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
                 <div class="stat-icon">🔧</div>
                 <div class="stat-content">
                     <h3>Contractors</h3>
                     <p></p>
                 </div>
-            </a> -->
+            </a>
         </div>
 
         <div class="admin-actions">
