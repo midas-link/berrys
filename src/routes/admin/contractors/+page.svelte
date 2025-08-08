@@ -4,11 +4,38 @@
     import { onMount } from 'svelte';
     import { PUBLIC_API_BASE_URL } from "$env/static/public";
     import { page } from '$app/stores';
-    let trailers = [];
+    let contractors = [];
     let filtered = false;
-    let filteredTrailers =[];
+    let filteredContractors =[];
     let error = null;
     let isLoading = true;
+    async function fetchData() {
+      try{
+        const response = await fetch('/api/contractors', {
+          method:'GET',
+          credentials: 'include'
+        })
+        if(!response.ok) {
+          if (response.status === 401) { 
+                    await goto(`${base}/login?authMessage=${encodeURIComponent('Your session has expired. Please log in again.')}`);
+                    return;
+                } else if (response.status === 403) { 
+                    await goto(`${base}/login?authMessage=${encodeURIComponent('Access Denied. You do not have administrator privileges.')}`);
+                    return;
+                } else {
+                    const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred.' }));
+                    throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+                }
+        }
+        contractors = await response.json();
+        console.log("contractors data:",contractors)
+      } catch(err) {
+        console.error('Error fetching contractors:',err);
+        error = err.message || 'Failed to load contractors. Please try again';
+      } finally {
+        isLoading = false;
+      }
+    }
     function formatEpochToDisplay(timestamp) {
     const date = new Date(timestamp);
      return date.toLocaleString("en-GB", {
@@ -20,24 +47,25 @@
         hour12: false,
      }).replace(/\//g,"-");
     }
-    function searchTrailer(searchedTrailer) {
-    filteredTrailers = [];
-    if(searchedTrailer.length===0) 
+    function searchContractor(searchedContractor) {
+    filteredContractors = [];
+    if(searchedContractor.length===0) 
       filtered= false;
-    trailers.forEach(element => {
-      if(element.trailer_number.includes(searchedTrailer))
+    contractors.forEach(element => {
+      if(element.name.includes(searchedContractor))
         {
-        filteredTrailers.push(element);
+        filteredContractors.push(element);
         filtered= true;
         }
     });
-    console.log(filteredTrailers);
+    console.log(filteredContractors);
     }
     async function handleLogout(){
         await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
     }
 
     onMount(async () => {
+      await fetchData();
     });
 </script>
 <svelte:head>
@@ -72,7 +100,7 @@
         <div class="dashboard-header">
             <h1>Contractors</h1>
             <div class="date-time">{new Date().toLocaleString()}</div>
-            <input type="text" placeholder="Search Trailers" class="search-bar" on:keydown={(e) => {if(e.key==='Enter'){ searchTrailer(e.target.value)} }}> 
+            <input type="text" placeholder="Search Contractors" class="search-bar" on:keydown={(e) => {if(e.key==='Enter'){ searchContractor(e.target.value)} }}> 
         </div>
         <div class="data-container">
             <table class="desktop-view">
@@ -80,24 +108,28 @@
                 <tr>
                     <th>Name</th>
                     <th>Address</th>
-                    <th></th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Date Added</th>
                 </tr>
               </thead>
               <tbody>
     {#if isLoading}
     <tr>
-        <td> Loading Trailers</td>
+        <td> Loading Contractors</td>
     </tr>
     {:else if error}
     <tr>
         <td>{error}</td>
     </tr>
-    {:else if (filtered ? filteredTrailers : trailers).length > 0}
-    {#each (filtered ? filteredTrailers : trailers) as row, index}
+    {:else if (filtered ? filteredContractors : contractors).length > 0}
+    {#each (filtered ? filteredContractors : contractors) as row, index}
         <tr>
-            <td>{row.trailer_id}</td>
-            <td>{row.trailer_number}</td>
-            <td>{formatEpochToDisplay(row.date_added)}</td>
+            <td>{row.name}</td>
+            <td>{row.address}</td>
+            <td>{row.email}</td>
+            <td>{row.phone_number}</td>
+            <td>{row.date_added}</td>
         </tr>
         {/each}
     {/if}
