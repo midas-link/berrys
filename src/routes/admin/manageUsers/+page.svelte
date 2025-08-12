@@ -15,7 +15,6 @@
   let editingUserId = null;
   let buOptions = [];
   let actionConfirmed = false;
-  // Add confirmation dialog variables
   let showConfirmDialog = false;
   let confirmMessage = "";
   let confirmCallback = null;
@@ -69,8 +68,35 @@
     const userName = user ? `${user.first_name} ${user.last_name}` : userId;
     confirmAction(
       `Are you sure you want to delete user "${userName}"? This action cannot be undone.`,
-      () => {
+      async() => {
+        try  {
+        const response = await fetch('/api/deleteUser', {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            userId : userId
+          }),
+          credentials: "include"
+        })
+        if(!response.ok) {
+          if(response.status === 400) {
+            console.log("No user was selected");
+          } else if (response.status === 403) {
+            console.log("You cannot delete an admin user.");
+          } else if( response.status === 404) {
+            console.log("User was not found in the database.")
+          }
+        }
+        const data = await response.json();
+        verificationError = false;
+        verificationMessage = data.message ; 
         console.log(`user id ${userId} deleted.`);
+
+      } catch (err) {
+        console.error("Error deleting user:", err);
+      }
       }
     );
   }
@@ -477,7 +503,6 @@
     padding: 0.75rem 1.5rem;
     border-radius: 5px;
     font-family: "Mulish", sans-serif;
-    cursor: pointer;
     transition: background-color 0.3s;
   }
   .delete-btn {
@@ -501,7 +526,6 @@
     padding: 0.75rem 1.5rem;
     border-radius: 5px;
     font-family: "Mulish", sans-serif;
-    cursor: pointer;
     transition: background-color 0.3s;
   }
   .search-bar::placeholder {
