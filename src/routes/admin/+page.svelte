@@ -311,9 +311,6 @@
 .activity-description {
     color: #333;
 }
-.header a{
-    padding-bottom:2vh;
-}
 .logout-btn {
     background: #014B96;
     color: white;
