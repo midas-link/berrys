@@ -1,7 +1,94 @@
 <script>
     import { base } from "$app/paths";
+    import { onMount } from "svelte";
+    
     let activeView = "monthly"; 
-
+    let divRef;
+    let leftRef; 
+    let midRef; 
+    let rightRef;
+    let currentData= {};
+    let deliveryTrend = true;
+    let cDropsTrend = true;
+    let totalMilesTrend = true;
+    $: {
+      deliveryTrend = calculateChange(currentData.deliveries || 0, currentData.prevDeliveries || 1) > 0;
+      cDropsTrend = calculateChange(currentData.cDrops || 0, currentData.prevcDrops || 1) < 0;
+      totalMilesTrend = calculateChange(currentData.totalMiles || 0, currentData.prevTotalMiles || 1) > 0;
+    }
+    const monthlyData = {
+      deliveries: 341,
+      prevDeliveries: 297,
+      cDrops: 35,
+      prevcDrops: 30,
+      totalMiles: 1342,
+      prevTotalMiles: 1213
+    }
+    const weeklyData = {
+      deliveries: 70,
+      prevDeliveries: 81,
+      cDrops: 7,
+      prevcDrops: 10,
+      totalMiles: 341,
+      prevTotalMiles: 338
+    }
+    const dailyData = {
+      deliveries: 15,
+      prevDeliveries: 14,
+      cDrops: 0,
+      prevcDrops: 1,
+      totalMiles: 60,
+      prevTotalMiles: 55
+    }
+    function changeView(view) {
+      activeView = view;
+      if(view === "monthly") {
+        currentData = monthlyData ;
+      } else if(view === "weekly") {
+        currentData = weeklyData ;
+      } else {
+        currentData = dailyData ;
+      }
+    }
+    function toggleFullScreen() {
+      if(!document.fullscreenElement) {
+        divRef.style.backgroundColor = "white";
+        leftRef.style.height = "80vh";
+        midRef.style.height = "80vh";
+        rightRef.style.height = "80vh";
+        leftRef.style.width = "30vw";
+        midRef.style.width = "30vw";
+        rightRef.style.width = "30vw";
+        divRef.requestFullscreen().catch((err)=> {
+          console.error(`Error enabling fullscreen: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen?.();
+      }
+    }
+    function calculateChange(x,y) {
+      return ((((x/y)) - 1) * 100).toPrecision(4)
+    }
+    function handleFullscreenChange() {
+      if (!document.fullscreenElement) {
+        leftRef.style.height = "50vh";
+        midRef.style.height = "50vh";
+        rightRef.style.height = "50vh";
+        leftRef.style.width = "20vw";
+        midRef.style.width = "20vw";
+        rightRef.style.width = "20vw";
+        divRef.style.backgroundColor = "";
+      }
+    }
+    
+    onMount(() => {
+      currentData = monthlyData;
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      
+      return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      };
+    });
 </script>
 <svelte:head>
     <meta charset="UTF-8" />
@@ -39,7 +126,7 @@
       </div>
     </div>
 </header>
-<main>
+<main bind:this={divRef}>
     <div class="btn-div">
         <div class="timeline-controls">
         <button
@@ -61,64 +148,62 @@
             Month
         </button>
         </div>
-            <div class="full-screen-div"> <button class="full-screen-btn">&#x26F6;</button> </div>
+            <div class="full-screen-div"> <button on:click={toggleFullScreen} class="full-screen-btn">&#x26F6;</button> </div>
     </div>
-    <div class="content">
-        
-        <div class="deliveries">
-            <div class="total-num" style="justify-self:center"> 341 Deliveries </div>
+    <div class="content" >
+        <div class="deliveries" bind:this={leftRef}>
+            <div class="total-num" style="justify-self:center"> {currentData.deliveries} Deliveries </div>
                 <div class="stats-comparison">
                     <div class="stats-left">
                     <b>Previous </b>
-                    <span> 297 </span>
+                    <span> {currentData.prevDeliveries} </span>
                     </div>
                     <div class="stats-right">
                     <b>Change</b>
-                    <span>+14.81%</span>
+                    <span> {calculateChange(currentData.deliveries,currentData.prevDeliveries) > 0 ? "+" : "" }{calculateChange(currentData.deliveries,currentData.prevDeliveries)}% </span>
                     </div>
                 </div>
             <div class="trends">   
                 <span>Trends 
-                    <span style="color:green;font-size:2.5rem">&#x25B2; </span> 
+                    <span style="color:{deliveryTrend ? "green" : "red"};font-size:2.5rem; transform:{ deliveryTrend ? 'rotate(0deg)' : 'rotate(180deg)' }; display:inline-block;">&#x25B2; </span> 
                 </span>
             </div>
             <div class="delivery-content" >  Successful Deliveries </div>
         </div>
-        <div class="cross-drops">
-            <div class="total-num" style="justify-self:center"> 35 Cross Drops </div>
+        <div class="cross-drops" bind:this={midRef}>
+            <div class="total-num" style="justify-self:center"> {currentData.cDrops} Cross Drops </div>
                 <div class="stats-comparison">
                     <div class="stats-left">
                     <b>Previous </b>
-                    <span> 30 </span>
+                    <span> {currentData.prevcDrops} </span>
                     </div>
                     <div class="stats-right">
                     <b>Change</b>
-                    <span>+16.66%</span>
+                    <span>{calculateChange(currentData.cDrops,currentData.prevcDrops) > 0 ? "+" : ""}{calculateChange(currentData.cDrops,currentData.prevcDrops)}%</span>
                     </div>
                 </div>
             <div class="trends">   
                 <span>Trends 
-                    <span style="color:red;font-size:2.5rem">&#x25B2; </span> 
-                </span>
+                  <span style="color:{ cDropsTrend ? 'green' : 'red' }; font-size:2.5rem; transform:{ cDropsTrend ? 'rotate(0deg)' : 'rotate(180deg)' }; display:inline-block;">&#x25B2;</span>
             </div>
             <div class="cdrop-content" > Cross Drops </div>
 
         </div>
-        <div class="total-miles">
-            <div class="total-num" style="justify-self:center"> 1342 Miles </div>
+        <div class="total-miles" bind:this={rightRef}>
+            <div class="total-num" style="justify-self:center"> {currentData.totalMiles} Miles </div>
                 <div class="stats-comparison">
                     <div class="stats-left">
                     <b>Previous </b>
-                    <span> 1213 Miles </span>
+                    <span> {currentData.prevTotalMiles} Miles </span>
                     </div>
                     <div class="stats-right">
                     <b>Change</b>
-                    <span>+10.63%</span>
+                    <span>{calculateChange(currentData.totalMiles,currentData.prevTotalMiles) > 0 ? "+" : ""}{calculateChange(currentData.totalMiles,currentData.prevTotalMiles)}%</span>
                     </div>
                 </div>
             <div class="trends">   
                 <span>Trends 
-                    <span style="color:green;font-size:2.5rem">&#x25B2; </span> 
+                    <span style="color:{totalMilesTrend ? "green" : "red"};font-size:2.5rem; transform:{ totalMilesTrend ? 'rotate(0deg)' : 'rotate(180deg)' }; display:inline-block;">&#x25B2; </span> 
                 </span>
             </div>
             <div class="mileage-content" >  Total Miles </div>
