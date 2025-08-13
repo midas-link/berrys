@@ -15,13 +15,11 @@
   $: city = locationDetails?.city;
   $: State = locationDetails?.state;
   $: previousURL = $page.state?.from;
- 
   function gotoVehicle() {
-    saveStateToSession();
-    goto(`${base}/vehicle/HDY674`, {
+    goto(`${base}/vehicle/HJJC213`, {
       state: {
         from: currentPath,
-        trailer: "HDY674",
+        trailer: "HJJC213",
       },
     });
   }
@@ -257,6 +255,7 @@
   onMount(() => {
     setupMobileMenu();
     console.log("locations details are: " ,locationDetails);
+    console.log("delivery details are:", deliveryDetails)
   });
 
 </script>
@@ -333,7 +332,7 @@
         >{address}
       </span>
     </h1>
-    <span> View below delivery details for this site code. </span>
+    <span> View below delivery details for this ZIP code. </span>
   </div>
   <div class="breadcrumb">
     <a href="{base}/home">Home</a><a href="{base}{previousURL}">{previousURL}</a
@@ -344,14 +343,14 @@
   <div class="main-container">
     <span class="address-details">
       <span class="delivery-address"> {address}, {city} {State} </span>
-      <span class="address-siteCode">Site Code:{siteCode} </span>
+      <span class="address-siteCode"> |  ZIP Code:{siteCode} </span>
     </span>
     <div class="delivery-details">
       <span class="delivery-time"> Total Delivery Time: 36 mins </span>
       <span> Compartments Loaded : 5 </span>
     </div>
     <div class="trailer-report">
-      <a class="trailer-id" on:click={() => gotoVehicle()}>Trailer: HDY674</a>
+      <a class="trailer-id" on:click={() => gotoVehicle()}>Trailer: HJJC213</a>
       <div class="export-dropdown">
         <button class="export-button" on:click={toggleDropdown}
           >Export As ▼</button
