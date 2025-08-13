@@ -8,7 +8,7 @@
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   const currentPath = get(page).url.pathname;
   function openDetails(row) {
-    goto(`${base}/deliveryDetail/${row.SiteCode}`, {
+    goto(`${base}/deliveryDetail/${row.Zip}`, {
       state: {
         from: currentPath,
         address: row.Address,
@@ -966,7 +966,7 @@
     box-sizing: border-box;
   }
   main {
-    flex: 1; /* Allow main to grow and fill the space */
+    flex: 1; 
     background-color: #f9bc39;
   }
   ::placeholder {
@@ -1271,48 +1271,48 @@
     border-radius: 2px;
     display: inline-block;
   }
+  .data-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 10px;
+  }
+  
   table {
-    display: block;
     margin-top: 1vh;
     margin-left: auto;
     margin-right: auto;
-    max-height: 70vh;
-    overflow-y: auto;
     border-collapse: collapse;
-    width: 95%;
+    width: 100%;
     border-radius: 10px;
     position: relative;
     margin-bottom: 5vh;
   }
+  
   thead {
     position: sticky;
     top: 0;
     z-index: 1;
     background-color: #004b96;
   }
-  tbody {
-    display: block;
-    overflow-y: auto;
-    width: 100%;
-  }
-  thead tr,
-  tbody tr {
+  
+  thead tr {
     display: table;
     width: 100%;
     table-layout: fixed;
   }
-  thead tr {
-    width: calc(100% - 1px);
-  }
+  
   tbody tr {
+    display: table;
     width: 100%;
+    table-layout: fixed;
   }
   th,
   td {
     font-family: "Mulish", sans-serif;
     text-align: center;
     padding: 16px !important;
-    width: 25%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
   table th {
     padding-left: 1vw;
