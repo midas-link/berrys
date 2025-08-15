@@ -466,7 +466,7 @@
       display: none;
     }
     .main-container img {
-      width: 25.5vw !important;
+      width: 20.5vw !important;
     }
     .main-container-middle img {
       width: 26vw !important;
