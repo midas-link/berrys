@@ -182,7 +182,7 @@
 </div>  
         <div class="form-row">
           <label for="change-password">Change Password:</label>
-          <input type="password" bind:value={newPassword} id="change-password" name="change-password" />
+          <input type="password" bind:value={newPassword} id="change-password" name="change-password" required />
         </div>
         <div class="form-row">
           <label for="confirm-password">Confirm Password:</label>
@@ -190,7 +190,7 @@
             type="password"
             id="confirm-password"
             bind:value={confirmPassword}
-            name="confirm-password"
+            name="confirm-password" required
           />
         </div>
         <button type="submit">Reset</button>
