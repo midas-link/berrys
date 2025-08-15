@@ -19,30 +19,16 @@
   let confirmMessage = "";
   let confirmCallback = null;
   let userToDelete = null;
-
-  function formatEpochToDisplay(timestamp) {
-    const date = new Date(timestamp);
-    return date
-      .toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
-      .replace(/\//g, "-");
-  }
   function editBusinessUnit(userId) {
     editingUserId = userId;
   }
-  
+
   function confirmAction(message, callback) {
     confirmMessage = message;
     confirmCallback = callback;
     showConfirmDialog = true;
   }
-  
+
   function handleConfirm() {
     if (confirmCallback) {
       confirmCallback();
@@ -51,52 +37,51 @@
     confirmCallback = null;
     userToDelete = null;
   }
-  
+
   function handleCancel() {
     showConfirmDialog = false;
     confirmCallback = null;
     userToDelete = null;
   }
-  
+
   function cancelEdit() {
     editingUserId = null;
   }
-  
+
   function deleteUser(userId) {
     userToDelete = userId;
-    const user = users.find(u => u.user_id === userId);
+    const user = users.find((u) => u.user_id === userId);
     const userName = user ? `${user.first_name} ${user.last_name}` : userId;
     confirmAction(
       `Are you sure you want to delete user "${userName}"? This action cannot be undone.`,
-      async() => {
-        try  {
-        const response = await fetch('/api/deleteUser', {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            userId : userId
-          }),
-          credentials: "include"
-        })
-        if(!response.ok) {
-          if(response.status === 400) {
-            console.log("No user was selected");
-          } else if (response.status === 403) {
-            console.log("You cannot delete an admin user.");
-          } else if( response.status === 404) {
-            console.log("User was not found in the database.")
+      async () => {
+        try {
+          const response = await fetch("/api/deleteUser", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: userId,
+            }),
+            credentials: "include",
+          });
+          if (!response.ok) {
+            if (response.status === 400) {
+              console.log("No user was selected");
+            } else if (response.status === 403) {
+              console.log("You cannot delete an admin user.");
+            } else if (response.status === 404) {
+              console.log("User was not found in the database.");
+            }
           }
+          const data = await response.json();
+          verificationError = false;
+          verificationMessage = data.message;
+          console.log(`user id ${userId} deleted.`);
+        } catch (err) {
+          console.error("Error deleting user:", err);
         }
-        const data = await response.json();
-        verificationError = false;
-        verificationMessage = data.message ; 
-        console.log(`user id ${userId} deleted.`);
-
-      } catch (err) {
-        console.error("Error deleting user:", err);
-      }
       }
     );
   }
@@ -204,16 +189,8 @@
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          await goto(
-            `${base}/login?authMessage=${encodeURIComponent("Your session has expired. Please log in again.")}`
-          );
-          return;
-        } else if (response.status === 403) {
-          await goto(
-            `${base}/login?authMessage=${encodeURIComponent("Access Denied. You do not have administrator privileges.")}`
-          );
-          return;
+        if (response.status === 500) {
+          error = "Failed to retrieve data from the database.";
         } else {
           const errorData = await response
             .json()
@@ -380,8 +357,10 @@
                   />
                 </td>
                 <td
-                  ><button on:click={() => deleteUser(row.user_id)} class="delete-btn" type="button"
-                    >Delete</button
+                  ><button
+                    on:click={() => deleteUser(row.user_id)}
+                    class="delete-btn"
+                    type="button">Delete</button
                   ></td
                 >
               </tr>
@@ -397,7 +376,7 @@
       </button>
     </form>
   </div>
-  
+
   {#if showConfirmDialog}
     <div class="confirm-overlay">
       <div class="confirm-dialog">
@@ -448,7 +427,7 @@
     overflow-y: auto;
     border-radius: 10px;
   }
-  
+
   table {
     margin-top: 1vh;
     margin-left: auto;
@@ -459,20 +438,20 @@
     position: relative;
     margin-bottom: 5vh;
   }
-  
+
   thead {
     position: sticky;
     top: 0;
     z-index: 1;
     background-color: #004b96;
   }
-  
+
   thead tr {
     display: table;
     width: 100%;
     table-layout: fixed;
   }
-  
+
   tbody tr {
     display: table;
     width: 100%;

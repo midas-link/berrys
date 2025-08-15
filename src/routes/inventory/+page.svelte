@@ -7,19 +7,19 @@
   export let data ; 
   async function fetchData() {
     try {
-      const res = await fetch(`/api/Inventory`, {
+      const response = await fetch(`/api/Inventory`, {
         method:'GET',
         credentials:'include'
       });
-      if (!res.ok) {
-        const errorData = await res
+      if (!response.ok) {
+        const errorData = await response
           .json()
           .catch(() => ({ message: "Unknown error" }));
         throw new Error(
-          `HTTP error! Status: ${res.status}. Message: ${errorData.error || res.statusText}`
+          `HTTP error! Status: ${res.status}. Message: ${errorData.error || response.statusText}`
         );
       }
-      rows = await res.json();
+      rows = await response.json();
     } catch (error) {
       console.error("Failed to load inventory data", error);
       dataLoadingError = `Failed to load data : ${error.message || error}`;

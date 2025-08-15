@@ -1,343 +1,417 @@
 <script>
-    import {base} from '$app/paths';
-    import {goto} from '$app/navigation';
-    import { onMount } from 'svelte';
-    import { PUBLIC_API_BASE_URL } from "$env/static/public";
-    import { page } from '$app/stores';
-    export let data ; 
-    console.log("user data is   " ,data)
-    $: authMessage = $page.url.searchParams.get('authMessage') || '';    
-    let stats = {
-        totalCustomers: 50,
-        activeTrailers: 100,
-        activeMidas: 52,
-        totalDeliveries: 150,
-        preventedCrossDrops: 25
-    };
-    let isLoading = false;
-    let summaryData = [];
-    let error = null;
-    let recentActivity = [];
-    async function handleLogout(){
-        try {
-        const response = await fetch(`/api/logout` , {
-            method: 'POST',
-            credentials:'include'
-        });
-        if(!response.ok) {
-            console.warn(`Logout failed, Error status: ${response.status}`);
-        }
+  import { base } from "$app/paths";
+  import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
+  import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  import { page } from "$app/stores";
+  export let data;
+  console.log("user data is   ", data);
+  $: authMessage = $page.url.searchParams.get("authMessage") || "";
+  let stats = {
+    totalCustomers: 50,
+    activeTrailers: 100,
+    activeMidas: 52,
+    totalDeliveries: 150,
+    preventedCrossDrops: 25,
+  };
+  let isLoading = false;
+  let summaryData = [];
+  let error = null;
+  let recentActivity = [];
+  async function handleLogout() {
+    try {
+      const response = await fetch(`/api/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        console.warn(`Logout failed, Error status: ${response.status}`);
+      }
     } catch (err) {
-        console.log("Error logging out",err );
-    } finally{
-        localStorage.removeItem('is_admin');
-        await goto(`${base}/login?authMessage=${encodeURIComponent('You have been logged out.')}`);
+      console.log("Error logging out", err);
+    } finally {
+      localStorage.removeItem("is_admin");
+      await goto(
+        `${base}/login?authMessage=${encodeURIComponent("You have been logged out.")}`
+      );
     }
+  }
+  async function fetchSummary() {
+    isLoading = true;
+    error = null;
+    const isAdmin = localStorage.getItem("is_admin") === "true";
+    if (!isAdmin) {
+      await goto(
+        `${base}/login?authMessage=${encodeURIComponent("Access Denied. Please log in as an administrator.")}`
+      );
+      return;
     }
-    async function fetchSummary() {
-        isLoading = true;
-        error = null;
-        const isAdmin = localStorage.getItem('is_admin') === 'true';
-        if(!isAdmin )  {         
-            await goto(`${base}/login?authMessage=${encodeURIComponent('Access Denied. Please log in as an administrator.')}`);
-            return; 
+    try {
+      const response = await fetch(`/api/admin/summary`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        if (response.status === 500) {
+          error = "Failed to retrieve data from the database.";
+        } else {
+          throw new Error(`Error status: ${response.status}`);
         }
-        try{
-            const response = await fetch(`/api/admin/summary` , {
-                credentials:'include'
-            });
-            if(!response.ok) {
-                throw new Error(`Error status: ${response.status}`);
-            }
-            const data = await response.json();
-            console.log("Summary data loaded:" , data);
-
-            summaryData = data;
-        } catch(err) {
-            console.log("Error fetching summary:", err);
-            error = "Failed to load summary data.";
-        } finally {
-            isLoading = false;
-        }
+      }
+      const data = await response.json();
+      console.log("Summary data loaded:", data);
+      summaryData = data;
+    } catch (err) {
+      console.log("Error fetching summary:", err);
+      error = "Failed to load summary data.";
+    } finally {
+      isLoading = false;
     }
-
-    onMount(async () => {
-        fetchSummary();
-    });
+  }
+  onMount(async () => {
+    fetchSummary();
+  });
 </script>
 
 <svelte:head>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script
+  <script
+    src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"
+  ></script>
+  <script
     src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
   ></script>
   <script
     src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
   ></script>
 
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href='https://fonts.googleapis.com/css?family=Mulish' rel='stylesheet'>
-    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
-    <link rel="stylesheet" href="{base}/css/styles.css">
-    <title>Admin Panel</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    href="https://fonts.googleapis.com/css?family=Mulish"
+    rel="stylesheet"
+  />
+  <link href="https://fonts.googleapis.com/css?family=Inter" rel="stylesheet" />
+  <link rel="stylesheet" href="{base}/css/styles.css" />
+  <title>Admin Panel</title>
 </svelte:head>
 <div class="page-wrapper">
-    <header>
-        <div class="header-container">
-            <div class="top-header">
-                <a class="top-header-link" href="https://berrys.com">berrys.com</a>
-            </div>
-            <div class="header">
-                 <button class="logout-btn" on:click={handleLogout} > Logout</button>
-            </div>
-        </div>
-    </header>
-    <div class="main-container">
-        <div class="dashboard-header">
-            <h1>Admin Dashboard</h1>
-            <div class="date-time">{new Date().toLocaleString()}</div>
-        </div>
-
-        <div class="stats-grid">
-            <a href="{base}/admin/manageUsers" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon">👥</div>
-                <div class="stat-content">
-                    <h3>Total Users</h3>
-                    <p>{summaryData.total_users}</p>
-                </div>
-            </a>
-            <a href="{base}/admin/trailers" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Truck_graphic.png" alt="Trailer" style="width:90%; height:90%;"></div>
-                <div class="stat-content">
-                    <h3>Total Trailers</h3>
-                    <p>{summaryData.total_trailers}</p>
-                </div>
-            </a>
-
-            <a href="{base}/admin/deliveries" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Moving_truck.png" alt="Delivery" style="width:90%; height:90%;"></div>
-                <div class="stat-content">
-                    <h3>Total Deliveries</h3>
-                    <p>{summaryData.total_deliveries}</p>
-                </div>
-            </a>
-            <a href="{base}/admin/cross-drops" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Cross-Drop" style="width:90%; height:90%;"></div>
-                <div class="stat-content">
-                    <h3>Total Cross-Drops</h3>
-                    <p>{summaryData.total_cross_drops}</p>
-                </div>
-            </a>
-            <a href="{base}/admin/locations" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Gas_station_graphic.png" alt="Locations" style="width:90%; height:90%;"></div>
-                <div class="stat-content">
-                    <h3>Total Locations</h3>
-                    <p>{summaryData.total_locations}</p>
-                </div>
-            </a>
-            <a href="{base}/admin/products" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon"><img src="{base}/images/Cross-drop graphic.png" alt="Products" style="width:90%; height:90%;"></div>
-                <div class="stat-content">
-                    <h3>Total Products</h3>
-                    <p>{summaryData.total_products}</p>
-                </div>
-            </a>
-            <a href="{base}/admin/contractors" class="stat-card" style="border: none; background: none; cursor: pointer; width: 100%;">
-                <div class="stat-icon">🔧</div>
-                <div class="stat-content">
-                    <h3>Contractors</h3>
-                    <p></p>
-                </div>
-            </a>
-        </div>
-
-        <div class="admin-actions">
-            <h2>Quick Actions</h2>
-            <div class="action-buttons">
-                <button on:click={goto(`${base}/admin/manageUsers`) } class="action-btn">Manage Users</button>
-                <button class="action-btn">View Reports</button>
-                <button class="action-btn">System Settings</button>
-                <button class="action-btn">Export Data</button>
-            </div>
-        </div>
-
-        <div class="recent-activity">
-            <h2>Recent Activity</h2>
-            <div class="activity-list">
-                {#if isLoading}
-                    <p>Loading...</p>
-                {:else if recentActivity.length === 0}
-                    <p>No recent activity</p>
-                {:else}
-                    {#each recentActivity as activity}
-                        <div class="activity-item">
-                            <span class="activity-time">{activity.time}</span>
-                            <span class="activity-description">{activity.description}</span>
-                        </div>
-                    {/each}
-                {/if}
-            </div>
-        </div>
+  <header>
+    <div class="header-container">
+      <div class="top-header">
+        <a class="top-header-link" href="https://berrys.com">berrys.com</a>
+      </div>
+      <div class="header">
+        <button class="logout-btn" on:click={handleLogout}> Logout</button>
+      </div>
     </div>
+  </header>
+  <div class="main-container">
+    <div class="dashboard-header">
+      <h1>Admin Dashboard</h1>
+      <div class="date-time">{new Date().toLocaleString()}</div>
+    </div>
+
+    <div class="stats-grid">
+      <a
+        href="{base}/admin/manageUsers"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <h3>Total Users</h3>
+          <p>{summaryData.total_users}</p>
+        </div>
+      </a>
+      <a
+        href="{base}/admin/trailers"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">
+          <img
+            src="{base}/images/Truck_graphic.png"
+            alt="Trailer"
+            style="width:90%; height:90%;"
+          />
+        </div>
+        <div class="stat-content">
+          <h3>Total Trailers</h3>
+          <p>{summaryData.total_trailers}</p>
+        </div>
+      </a>
+
+      <a
+        href="{base}/admin/deliveries"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">
+          <img
+            src="{base}/images/Moving_truck.png"
+            alt="Delivery"
+            style="width:90%; height:90%;"
+          />
+        </div>
+        <div class="stat-content">
+          <h3>Total Deliveries</h3>
+          <p>{summaryData.total_deliveries}</p>
+        </div>
+      </a>
+      <a
+        href="{base}/admin/cross-drops"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">
+          <img
+            src="{base}/images/Cross-drop graphic.png"
+            alt="Cross-Drop"
+            style="width:90%; height:90%;"
+          />
+        </div>
+        <div class="stat-content">
+          <h3>Total Cross-Drops</h3>
+          <p>{summaryData.total_cross_drops}</p>
+        </div>
+      </a>
+      <a
+        href="{base}/admin/locations"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">
+          <img
+            src="{base}/images/Gas_station_graphic.png"
+            alt="Locations"
+            style="width:90%; height:90%;"
+          />
+        </div>
+        <div class="stat-content">
+          <h3>Total Locations</h3>
+          <p>{summaryData.total_locations}</p>
+        </div>
+      </a>
+      <a
+        href="{base}/admin/products"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">
+          <img
+            src="{base}/images/Cross-drop graphic.png"
+            alt="Products"
+            style="width:90%; height:90%;"
+          />
+        </div>
+        <div class="stat-content">
+          <h3>Total Products</h3>
+          <p>{summaryData.total_products}</p>
+        </div>
+      </a>
+      <a
+        href="{base}/admin/contractors"
+        class="stat-card"
+        style="border: none; background: none; cursor: pointer; width: 100%;"
+      >
+        <div class="stat-icon">🔧</div>
+        <div class="stat-content">
+          <h3>Contractors</h3>
+          <p></p>
+        </div>
+      </a>
+    </div>
+
+    <div class="admin-actions">
+      <h2>Quick Actions</h2>
+      <div class="action-buttons">
+        <button on:click={goto(`${base}/admin/manageUsers`)} class="action-btn"
+          >Manage Users</button
+        >
+        <button class="action-btn">View Reports</button>
+        <button class="action-btn">System Settings</button>
+        <button class="action-btn">Export Data</button>
+      </div>
+    </div>
+
+    <div class="recent-activity">
+      <h2>Recent Activity</h2>
+      <div class="activity-list">
+        {#if isLoading}
+          <p>Loading...</p>
+        {:else if recentActivity.length === 0}
+          <p>No recent activity</p>
+        {:else}
+          {#each recentActivity as activity}
+            <div class="activity-item">
+              <span class="activity-time">{activity.time}</span>
+              <span class="activity-description">{activity.description}</span>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    </div>
+  </div>
   <footer>
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
-        <span style="font-size: 1rem; font-family: Mulish;">@copyrights Berrys Global Innovations</span>
-        <img src="{base}/images/logo.png" alt="Berrys Logo" >
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; padding: 0 20px;"
+    >
+      <span style="font-size: 1rem; font-family: Mulish;"
+        >@copyrights Berrys Global Innovations</span
+      >
+      <img src="{base}/images/logo.png" alt="Berrys Logo" />
     </div>
-</footer>
+  </footer>
 </div>
 
 <style>
-
-.page-wrapper {
+  .page-wrapper {
     height: 100%;
     min-height: 100vh;
     margin: 0;
     padding: 0;
-}
-.page-wrapper {
+  }
+  .page-wrapper {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-}
-.main-container {
+  }
+  .main-container {
     flex: 1 0 auto;
     padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
-}
-.dashboard-header {
+  }
+  .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
-}
-.dashboard-header h1 {
-    font-family: 'Mulish', sans-serif;
-    color: #014B96;
+  }
+  .dashboard-header h1 {
+    font-family: "Mulish", sans-serif;
+    color: #014b96;
     margin: 0;
-}
-.date-time {
-    font-family: 'Mulish', sans-serif;
+  }
+  .date-time {
+    font-family: "Mulish", sans-serif;
     color: #666;
-}
-.stats-grid {
+  }
+  .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
-}
-.stat-card {
+  }
+  .stat-card {
     background: white;
     border-radius: 10px;
     padding: 0.5rem 0 2rem 0;
     margin: 2rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display:grid;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: grid;
     align-items: center;
     justify-items: center;
     gap: 1rem;
     text-decoration: none;
-}
-.stat-icon {
+  }
+  .stat-icon {
     font-size: 2rem;
-}
-.stat-content h3 {
-    font-family: 'Mulish', sans-serif;
+  }
+  .stat-content h3 {
+    font-family: "Mulish", sans-serif;
     font-size: 0.9rem;
     color: #666;
     margin: 0 0 0.5rem 0;
-}
-.stat-content p {
-    font-family: 'Mulish', sans-serif;
+  }
+  .stat-content p {
+    font-family: "Mulish", sans-serif;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #014B96;
+    color: #014b96;
     margin: 0;
-}
-.admin-actions {
+  }
+  .admin-actions {
     margin-bottom: 2rem;
-}
-.admin-actions h2 {
-    font-family: 'Mulish', sans-serif;
-    color: #014B96;
+  }
+  .admin-actions h2 {
+    font-family: "Mulish", sans-serif;
+    color: #014b96;
     margin-bottom: 1rem;
-}
-.action-buttons {
+  }
+  .action-buttons {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 1rem;
-}
-.action-btn {
-    background: #014B96;
+  }
+  .action-btn {
+    background: #014b96;
     color: white;
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 5px;
-    font-family: 'Mulish', sans-serif;
+    font-family: "Mulish", sans-serif;
     cursor: pointer;
     transition: background-color 0.3s;
-}
-.action-btn:hover {
+  }
+  .action-btn:hover {
     background: #013b77;
-}
-.recent-activity {
+  }
+  .recent-activity {
     background: white;
     border-radius: 10px;
     padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.recent-activity h2 {
-    font-family: 'Mulish', sans-serif;
-    color: #014B96;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .recent-activity h2 {
+    font-family: "Mulish", sans-serif;
+    color: #014b96;
     margin-bottom: 1rem;
-}
-.activity-list {
+  }
+  .activity-list {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-}
-.activity-item {
+  }
+  .activity-item {
     display: flex;
     gap: 1rem;
     padding: 0.5rem 0;
     border-bottom: 1px solid #eee;
-}
-.activity-time {
+  }
+  .activity-time {
     color: #666;
     font-size: 0.9rem;
-}
-.activity-description {
+  }
+  .activity-description {
     color: #333;
-}
-.logout-btn {
-    background: #014B96;
+  }
+  .logout-btn {
+    background: #014b96;
     color: white;
     border: white 1px solid;
     padding: 0.75rem 1.5rem;
     border-radius: 5px;
-    font-family: 'Mulish', sans-serif;
+    font-family: "Mulish", sans-serif;
     cursor: pointer;
     transition: background-color 0.3s;
-}
-.logout-btn:hover {
+  }
+  .logout-btn:hover {
     background: #013b77;
-}
+  }
 
-footer {
+  footer {
     flex-shrink: 0;
-}
+  }
 
-@media (max-width: 1000px) {
+  @media (max-width: 1000px) {
     .main-container {
-        padding: 1rem;
+      padding: 1rem;
     }
     .stats-grid {
-        grid-template-columns: 1fr;
+      grid-template-columns: 1fr;
     }
     .action-buttons {
-        grid-template-columns: 1fr;
+      grid-template-columns: 1fr;
     }
-}
+  }
 </style>
