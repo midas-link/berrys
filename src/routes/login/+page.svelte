@@ -37,11 +37,11 @@
         showPopup = true;
         localStorage.setItem('is_admin',  data.isAdmin ? 'true' : 'false');
         let redirectPath = data.isAdmin ? `${base}/admin` : `${base}/home`;
+        // remove this for production
         if(data.email.toLowerCase() === 'david@berrys.com') {
           redirectPath = `${base}/midas/post`;
         }
         
-
         setTimeout(() => {
           goto(redirectPath);
         }, 2000);
@@ -123,7 +123,7 @@
               id="password"
               name="password"
               bind:value={password}
-              placeholder="•••••••••"
+              placeholder="Password"
               required
             />
           </div>
