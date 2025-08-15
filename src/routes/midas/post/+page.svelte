@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from "svelte";
     import {base} from '$app/paths';
     let Mac_Address = '';
     let Serial_Number = '';
@@ -10,6 +9,7 @@
     let Delivery_Status = '';
     let Charge_End = '';
     let End_Time = '';
+    let Battery_Start = '';
     let responseMessage = '';
     let isError = false;
     let macAddressError = '';
@@ -64,7 +64,7 @@
         responseMessage = '';
         isError = false;
         
-        if(!Mac_Address || !Serial_Number  || !Start_Time || !Tank_No || !Fuel_Name || !Fuel_Type || !Delivery_Status || !Charge_End || !End_Time){
+        if(!Mac_Address || !Serial_Number || !Start_Time || !Tank_No || !Fuel_Name || !Fuel_Type || !Delivery_Status || !Charge_End || !End_Time){
             responseMessage = "Please fill all the fields."
             isError = true;
             return;
@@ -83,7 +83,7 @@
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    Mac_Address: formatMacAddress(Mac_Address), // Send formatted MAC address
+                    Mac_Address: formatMacAddress(Mac_Address), 
                     Serial_Number: Serial_Number,
                     Start_Time: Start_Time,
                     Tank_No : Tank_No ,
@@ -92,6 +92,7 @@
                     Delivery_Status : Delivery_Status,
                     Charge_End : Charge_End,
                     End_Time : End_Time ,
+                    Battery_Start : Battery_Start,
                 })
             })
         const data = await response.json();
@@ -107,6 +108,9 @@
             Delivery_Status = '';
             Charge_End = '';
             End_Time = '';
+            Battery_Start = '';
+            macAddressError = '';
+            isMacAddressValid = '';
         } else {
             isError = true;
             responseMessage = data.message;
@@ -177,12 +181,16 @@
     <input type="text" id="Start_Time" name="Start_Time" bind:value={Start_Time} placeholder="Start Time" required />
     </div>
     <div class="input-duo">
-    <label for="Tank No">Tank No:</label>
-    <input type="text" id="Tank No" name="Tank No" bind:value={Tank_No} placeholder="Tank Number" required />
+    <label for="Battery_Start">Battery Start:</label>
+    <input type="text" id="Battery_Start" name="Battery_Start" bind:value={Battery_Start} placeholder="Battery Start" required />
     </div>
     <div class="input-duo">
-    <label for="Fuel Name">Fuel Name:</label>
-    <input type="text" id="Fuel Name" name="Fuel Name" bind:value={Fuel_Name} placeholder="Fuel Name" list="fuel-options" required />
+    <label for="Tank_No">Tank No:</label>
+    <input type="text" id="Tank_No" name="Tank_No" bind:value={Tank_No} placeholder="Tank Number" required />
+    </div>
+    <div class="input-duo">
+    <label for="Fuel_Name">Fuel Name:</label>
+    <input type="text" id="Fuel_Name" name="Fuel_Name" bind:value={Fuel_Name} placeholder="Fuel Name" list="fuel-options" required />
     <datalist id="fuel-options">
         <option value="GAS REG"></option>
         <option value="GAS PREM"></option>
@@ -194,8 +202,8 @@
     </datalist>
     </div>
     <div class="input-duo">
-    <label for="Fuel Type">Fuel Type:</label>
-    <input type="text" id="Fuel Type" name="Fuel Type" bind:value={Fuel_Type} placeholder="Fuel Type" list="fuel-types" required />
+    <label for="Fuel_Type">Fuel Type:</label>
+    <input type="text" id="Fuel_Type" name="Fuel_Type" bind:value={Fuel_Type} placeholder="Fuel Type" list="fuel-types" required />
     <datalist id="fuel-types">
         <option value="PETROL"></option>
         <option value="DIESEL"></option>
@@ -203,20 +211,20 @@
     </datalist>
     </div>
     <div class="input-duo">
-    <label for="Delivery Status">Delivery Status:</label>
-    <input type="text" id="Delivery Status" name="Delivery Status" bind:value={Delivery_Status} placeholder="Delivery Status" list="delivery-status" required />
+    <label for="Delivery_Status">Delivery Status:</label>
+    <input type="text" id="Delivery_Status" name="Delivery_Status" bind:value={Delivery_Status} placeholder="Delivery Status" list="delivery-status" required />
     <datalist id="delivery-status">
         <option value="GOOD FUEL"> </option>
         <option value="CROSSFLOW"></option>
     </datalist>
     </div>
     <div class="input-duo">
-    <label for="Charge End">Charge End:</label>
-    <input type="text" id="Charge End" name="Charge End" bind:value={Charge_End} placeholder="Charge End" required />
+    <label for="Charge_End">Charge End:</label>
+    <input type="text" id="Charge_End" name="Charge_End" bind:value={Charge_End} placeholder="Charge End" required />
     </div>
     <div class="input-duo">
-    <label for="End Time">End Time:</label>
-    <input type="text" id="End Time" name="End Time" bind:value={End_Time} placeholder="End Time" required />
+    <label for="End_Time">End Time:</label>
+    <input type="text" id="End_Time" name="End_Time" bind:value={End_Time} placeholder="End Time" required />
     </div>
     <button class="submit-button" type="submit"> Submit data </button>
     <a class="logs-button" style="text-decoration:none;" href="/midas/logs"> Show Logs </a>
@@ -282,11 +290,10 @@ main input{
     border-radius: 4px;
     font-size: 1.25rem;
     cursor: pointer;
-    transition: opacity 0.3s ease;
+    transition: background-color 0.3s ease;
     text-transform: uppercase;
     font-weight: 700;
   }
-
   .submit-button:hover {
     background-color: #012f5e;
   }
