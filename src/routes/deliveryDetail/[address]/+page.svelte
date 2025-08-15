@@ -15,11 +15,13 @@
   $: city = locationDetails?.city;
   $: State = locationDetails?.state;
   $: previousURL = $page.state?.from;
+  $: vehicleNumber = deliveryDetails[0]["Trailer No."];
   function gotoVehicle() {
-    goto(`${base}/vehicle/HJJC213`, {
+    //fix this to be the correct vehicle since there might be multiple vehicles
+    goto(`${base}/vehicle/${vehicleNumber}`, {
       state: {
         from: currentPath,
-        trailer: "HJJC213",
+        trailer: vehicleNumber,
       },
     });
   }
@@ -255,7 +257,8 @@
   onMount(() => {
     setupMobileMenu();
     console.log("locations details are: " ,locationDetails);
-    console.log("delivery details are:", deliveryDetails)
+    console.log("delivery details are:", deliveryDetails);
+    console.log("delivery detail vehicle number: ",deliveryDetails[0]["Trailer No."]);
   });
 
 </script>
@@ -350,7 +353,7 @@
       <span> Compartments Loaded : 5 </span>
     </div>
     <div class="trailer-report">
-      <a class="trailer-id" on:click={() => gotoVehicle()}>Trailer: HJJC213</a>
+      <a class="trailer-id" on:click={() => gotoVehicle()}>Trailer: {vehicleNumber}</a>
       <div class="export-dropdown">
         <button class="export-button" on:click={toggleDropdown}
           >Export As ▼</button
