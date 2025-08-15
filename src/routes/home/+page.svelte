@@ -266,7 +266,7 @@
         <span></span>
         <span></span>
       </div>
-      <a href="{base}/home">Home</a>
+      <a href="{base}/newHome">Summary Page</a>
       <a href="{base}/vehicle-logging">Vehicle Logging</a>
       <a href="{base}/cross-drops">Cross-Drop Prevention</a>
       <a href="{base}/site-data">Site Data</a>
@@ -279,7 +279,7 @@
 </header>
 
 <div class="mobile-sidebar" id="mobile-sidebar">
-  <a href="{base}/home">Home</a>
+  <a href="{base}/newHome">Summary Page</a>
   <a href="{base}/vehicle-logging">Vehicle Logging</a>
   <a href="{base}/cross-drops">Cross-Drop Prevention</a>
   <a href="{base}/site-data">Site Data</a>
