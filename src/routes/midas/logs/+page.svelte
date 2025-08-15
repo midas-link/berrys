@@ -51,6 +51,7 @@
                     <th>Mac Address</th>
                     <th>Serial No</th>
                     <th>Start Time</th>
+                    <th>Battery Start</th>
                     <th>Tank No</th>
                     <th>Fuel Name</th>
                     <th>Fuel Type</th>
@@ -66,6 +67,7 @@
                     <td>{row.mac_address}</td>
                     <td>{row.serial_number}</td>
                     <td>{row.start_time}</td>
+                    <td>{row.battery_start}</td>
                     <td>{row.tank_number}</td>
                     <td>{row.fuel_name}</td>
                     <td>{row.fuel_type}</td>
