@@ -26,6 +26,8 @@
       if(response.ok) {
         responseMessage = data.message || "A password reset link has been sent to the entered email"
         isForgotError = false;
+      } else if(response.status === 400) {
+        responseMessage = response.error ;
       } else {
         console.log("Something went wrong");
       }
@@ -94,7 +96,7 @@
                 class="sign-up-link"
                 href="{base}/register">Sign up</a 
               > 
-              Back to <a class="login-link" href="{base}/login">Login</a>
+              <span class="back-to-login"> Back to <a class="login-link" href="{base}/login">Login</a> </span>
             </div>
           </form>
           
@@ -209,7 +211,7 @@
   
     .forgot-password-form {
       background: white;
-      padding: clamp(1.5rem, 4vw, 2rem);
+      padding: clamp(1.25rem, 4vw, 1.25rem);
       padding-bottom: 0.25rem;
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -274,5 +276,6 @@
       margin-bottom: 1vh;
       color: #737373;
     }
+
   </style>
   
