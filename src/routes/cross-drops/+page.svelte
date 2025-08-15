@@ -16,6 +16,18 @@
   let uniqueZips;
   const currentPath = get(page).url.pathname;
   let mobileSearchVisible = false;
+  
+  // Dropdown management
+  let dropdownRefs = {};
+  
+  function handleDropdownOpen(openDropdownId) {
+    // Close all other dropdowns
+    Object.keys(dropdownRefs).forEach(dropdownId => {
+      if (dropdownId !== openDropdownId && dropdownRefs[dropdownId]) {
+        dropdownRefs[dropdownId].closeDropdown();
+      }
+    });
+  }
   function openDetails(row) {
     goto(`${base}/deliveryDetail/${row.Zip}`, {
       state: {
@@ -47,7 +59,6 @@
       allEvents = data;
       filteredEvents = [...allEvents];
 
-      // Extract unique states and cities
       uniqueStates = [
         ...new Set(
           allEvents.map((row) => row.State).filter((s) => s && s.trim() !== "")
@@ -619,6 +630,8 @@
         label="State"
         options={uniqueStates}
         bind:value={searchParams.state}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["State"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}
@@ -628,6 +641,8 @@
         label="City"
         options={uniqueCities}
         bind:value={searchParams.city}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["City"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}

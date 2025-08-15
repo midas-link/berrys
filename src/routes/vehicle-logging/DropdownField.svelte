@@ -6,6 +6,7 @@
   export let options = [];
   export let value = "";
   export let onChange = () => {};
+  export let onDropdownOpen = () => {}; // New prop to handle dropdown opening
   export const prerender = true;
 
   let showDropdown = false;
@@ -14,9 +15,9 @@
 
   function toggleDropdown() {
     showDropdown = !showDropdown;
-    // Reset filtered options when toggling dropdown with click
     if (showDropdown) {
       filteredOptions = [...options];
+      onDropdownOpen(id); // Notify parent that this dropdown is now open
     }
   }
 
@@ -32,6 +33,7 @@
       option.toLowerCase().includes(filter)
     );
     showDropdown = true;
+    onDropdownOpen(id); // Notify parent that this dropdown is now open
   }
 
   function handleOutsideClick(event) {
@@ -40,14 +42,19 @@
     }
   }
 
-  // Function to handle clicks on the dropdown arrow specifically
   function handleArrowClick(event) {
-    // Prevent the input's onClick from firing
     event.stopPropagation();
-    // Show all options when clicking arrow
     filteredOptions = [...options];
     toggleDropdown();
   }
+
+  // Function to close dropdown from parent
+  function closeDropdown() {
+    showDropdown = false;
+  }
+
+  // Expose the closeDropdown function to parent
+  export { closeDropdown };
 </script>
 
 <svelte:window on:click={handleOutsideClick} />

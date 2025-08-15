@@ -47,6 +47,18 @@
   let dateInput;
   let fuelInput;
   let mobileSearchVisible = false;
+  
+  // Dropdown management
+  let dropdownRefs = {};
+  
+  function handleDropdownOpen(openDropdownId) {
+    // Close all other dropdowns
+    Object.keys(dropdownRefs).forEach(dropdownId => {
+      if (dropdownId !== openDropdownId && dropdownRefs[dropdownId]) {
+        dropdownRefs[dropdownId].closeDropdown();
+      }
+    });
+  }
   function formatSearchedDate(searchedDate) {
     if (!searchedDate) return "";
     const date = new Date(searchedDate);
@@ -656,6 +668,8 @@
         label="Business Unit"
         options={uniqueBusinessUnits}
         bind:value={searchParams.businessUnit}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["Business-unit"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}
@@ -682,6 +696,8 @@
         label="State"
         options={uniqueStates}
         bind:value={searchParams.state}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["State"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}
@@ -692,6 +708,8 @@
         label="City"
         options={uniqueCities}
         bind:value={searchParams.city}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["City"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}
@@ -702,6 +720,8 @@
         label="Site"
         options={uniqueSites}
         bind:value={searchParams.site}
+        onDropdownOpen={handleDropdownOpen}
+        bind:this={dropdownRefs["Site"]}
         on:keydown={(e) => {
           if (e.key === "Enter") filterRows();
         }}
