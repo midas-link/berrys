@@ -10,7 +10,6 @@
     min-height: 100vh;
     min-width: 100vw;
   }
-  
   :global(body) {
     margin: 0;
     padding: 0;
@@ -23,5 +22,6 @@
     margin: 0;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
   }
 </style>

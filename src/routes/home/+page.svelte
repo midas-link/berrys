@@ -3,7 +3,10 @@
   import { base } from "$app/paths";
   import { goto } from '$app/navigation';
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  import Chart from "chart.js/auto";
   export let data ; 
+  let lineCanvas,lineInstance;
+  let graphDrops = 40;
   let leftContainer;
   let middleContainer;
   let rightContainer;
@@ -13,10 +16,32 @@
   let subHeaderProfile;
   let subHeaderCompany;
   let mainSwipeContainer;
-
+  let input = "" ;
+  let showSuggestions = false; 
+  let searchResults = [];
+  let searchError = "";
   let touchStartX = 0;
   let touchEndX = 0;
+  let map;
   const swipeThreshold = 50;
+  async function initMap() {
+  const position = { lat: 52.482899, lng: -1.893460 };
+  const markerPos = [
+  { lat: 52.482899, lng: -1.893460 },
+  { lat: 51.484000, lng: -1.894500 },
+  ]
+  const { Map } = await google.maps.importLibrary("maps");
+  const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+  const { DirectionsService, DirectionsRenderer }  = await google.maps.importLibrary("routes");
+
+  const directionsService = new DirectionsService();
+  const directionsRenderer = new DirectionsRenderer();
+  map = new Map(document.getElementById("map"), {
+    zoom: 4,
+    center: position,
+    mapId: "DEMO_MAP_ID",
+  });
+}
   async function handleLogout(){
         try {
         const response = await fetch(`/api/logout` , {
@@ -61,7 +86,6 @@
       }, 200);
     }, 150);
   }
-
   function moveContainers(direction) {
     if (leftArrow) leftArrow.style.pointerEvents = "none";
     if (rightArrow) rightArrow.style.pointerEvents = "none";
@@ -158,7 +182,33 @@
       });
     }
   }
-
+  async function handleSearch(searchText) {
+    try {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchText)}`, {
+        credentials: 'include'
+      });
+      if(response.ok) {
+        searchResults = await response.json();
+      } else {
+        const errorData = await response.json();
+        searchError = errorData;
+        searchResults = [];
+      }
+    } catch(err) {
+      searchError = 'A network error occurred.';
+      searchResults = [];
+    } finally {
+      console.log("Search results are:", searchResults);
+    }
+  }
+  function handleSearchbar(event) {
+    input = event.target.value; 
+    showSuggestions = input.length > 0; 
+    if(input.length > 2) {
+      console.log("searched input is: ",input)
+      handleSearch(input);
+    }
+  }
   function handleTouchStart(event) {
     if (window.innerWidth > 1000) return;
     touchStartX = event.touches[0].clientX;
@@ -187,8 +237,45 @@
     touchStartX = 0;
     touchEndX = 0;
   }
+  function getDayWithOrdinal(day) {
+  if (day > 3 && day < 21) {
+    return day + "th";
+  }
+  switch (day % 10) {
+    case 1:
+      return day + "st";
+    case 2:
+      return day + "nd";
+    case 3:
+      return day + "rd";
+    default:
+      return day + "th";
+  }
+}
+function updateDateTime() {
+  const datetimeElement = document.getElementById("current-date");
 
-  onMount(() => {
+  if (datetimeElement) {
+    const now = new Date();
+    const day = now.getDate();
+    const weekdayOptions = { weekday: "long" };
+    const monthOptions = { month: "long" };
+
+    const formattedWeekday = now.toLocaleDateString("en-GB", weekdayOptions);
+    const formattedMonth = now.toLocaleDateString("en-GB", monthOptions);
+    const formattedDay = getDayWithOrdinal(day);
+
+    datetimeElement.textContent = `${formattedWeekday} ${formattedDay} ${formattedMonth}`;
+  }
+}
+function randomData(length, max = 100) {
+    return Array.from({ length }, () => Math.floor(Math.random() * max));
+  }
+  onMount(async() => {
+    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+      key: "AIzaSyBwq9QkY1PNUigVK5bcLb9a-AuG3w36FJU",
+      v: "weekly",
+    });
     leftContainer = document.querySelector(".main-container-left");
     middleContainer = document.querySelector(".main-container-middle");
     rightContainer = document.querySelector(".main-container-right");
@@ -197,9 +284,26 @@
     dropdownMenu = document.getElementById("dropdownMenu");
     subHeaderProfile = document.querySelector(".sub-header-profile");
     mainSwipeContainer = document.querySelector(".main-container");
+    const scrollButton = document.getElementById("scroll-btn");
+    const tableContainer = document.getElementById("scrollable-table-container")
+    scrollButton.addEventListener('click',() => {
+      if(tableContainer.scrollTop + tableContainer.clientHeight < tableContainer.scrollHeight) { 
+      tableContainer.scrollBy({
+        top: 50,
+        behavior:"smooth"
+      })
+    } else {
+      console.log("user has reached bottom, scrolling back up.");
+      tableContainer.scroll({
+        top: 0,
+        behavior:"smooth"
+      })
+    }
+    })
     const clickMoveLeft = () => moveContainers("left");
     const clickMoveRight = () => moveContainers("right");
-
+    updateDateTime();
+    const interval = setInterval(updateDateTime, 1000);
     if (leftArrow) leftArrow.addEventListener("click", clickMoveLeft);
     if (rightArrow) rightArrow.addEventListener("click", clickMoveRight);
     if (subHeaderProfile)
@@ -217,7 +321,29 @@
       });
       mainSwipeContainer.addEventListener("touchend", handleTouchEnd);
     }
+    lineInstance = new Chart(lineCanvas, {
+      type: "line",
+      data: {
+        labels: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+        datasets: [
+          {
+            data: randomData(7),
+            fill: false,
+            borderColor: "rgb(75, 192, 192)",
+            tension: 0.1,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: `${graphDrops} Drops This week ` }
+        }
+      }
+    });
 
+    initMap();
     setupMobileMenu();
 
     return () => {
@@ -234,6 +360,7 @@
         mainSwipeContainer.removeEventListener("touchmove", handleTouchMove);
         mainSwipeContainer.removeEventListener("touchend", handleTouchEnd);
       }
+      clearInterval(interval);
     };
   });
 </script>
@@ -266,20 +393,27 @@
         <span></span>
         <span></span>
       </div>
-      <a href="{base}/newHome">Summary Page</a>
       <a href="{base}/vehicle-logging">Vehicle Logging</a>
       <a href="{base}/cross-drops">Cross-Drop Prevention</a>
       <a href="{base}/site-data">Site Data</a>
       <a href="{base}/inventory">Inventory</a>
       <a href="{base}/analytics">Analytics</a>
-      <input type="text" placeholder="Search..." />
+      <div class="search-box">
+        <input type="text" bind:value={input} on:input={handleSearchbar} placeholder="Search..." /> 
+        <div class="sug-box" class:active={showSuggestions}>
+          {#if searchResults}
+          {#each searchResults as row}
+          <li>{row.address}  {row.code ? `, ${row.code}` : "" } </li>  
+          {/each}
+          {/if}
+        </div>
+      </div>
       <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
     </div>
   </div>
 </header>
 
 <div class="mobile-sidebar" id="mobile-sidebar">
-  <a href="{base}/newHome">Summary Page</a>
   <a href="{base}/vehicle-logging">Vehicle Logging</a>
   <a href="{base}/cross-drops">Cross-Drop Prevention</a>
   <a href="{base}/site-data">Site Data</a>
@@ -296,69 +430,187 @@
 
 <div class="overlay" id="overlay"></div>
 
-<div class="sub-header-container">
-  <div class="sub-header">
-    <div class="sub-header-profile">
-      <div class="profile-column">
-        <img
-          class="profile-pic"
-          src="{base}/images/NicePng_gray.png"
-          alt="profile-logo"
-        />
-        <div class="sub-header-profile-name"> {data.user.firstName} {data.user.lastName} </div>
-      </div>
-      <div class="company-column">
-        <img
-          class="company-logo"
-          src={data.user.companyImage ? data.user.companyImage : `${base}/images/circle-k-logo.png`}
-                    alt="company-logo"
-        />
-        <div class="sub-header-role">( Area Manager )</div>
-      </div>
-    </div>
-  </div>
-  <div class="dropdown-menu" id="dropdownMenu">
-    <button on:click={handleLogout} id="logout">Logout</button>
-    <a href="{base}/manageAcc">Manage Account</a>
-  </div>
-</div>
+
 
 <main>
-  <div class="main-container">
-    <img src="{base}/svg/left-arrow.svg" alt="left-arrow" class="left-arrow" />
-
-    <div class="main-container-left">
-      <button style="border:0 ; background:none" on:click={handleLeftClick}>
-        <img src="{base}/images/Truck_graphic.png" alt="Truck Graphic" />
-      </button>
-      <span class="main-container-left-sub-title">Vehicle Logging</span>
+  <div class="sub-header-container">
+    <div class="sub-header">
+      <div class="sub-header-profile">
+        <div class="profile-column">
+          <img
+            class="profile-pic"
+            src="{base}/images/NicePng_gray.png"
+            alt="profile-logo"
+          />
+          <div class="sub-header-profile-name"> {data.user.firstName} {data.user.lastName} </div>
+        </div>
+        <div class="company-column">
+          <img
+            class="company-logo"
+            src={data.user.companyImage ? data.user.companyImage : `${base}/images/circle-k-logo.png`}
+                      alt="company-logo"
+          />
+          <div class="sub-header-role">( Area Manager )</div>
+        </div>
+      </div>
+      <div class="sub-header-middle">
+        <img class="dashboard-logo" src={`${base}/images/Dashboard-icon.png`} alt="dashboard-logo"  />
+        <h1 style="margin:0"> Dashboard</h1>
+      </div>
+      <div class="sub-header-right">
+        <span class="current-time" id="current-date"></span>
+      </div>
     </div>
-
-    <div class="main-container-middle">
-      <button style="border:0 ; background:none" on:click={handleMiddleClick}>
-        <img
-          src="{base}/images/Cross-drop graphic.png"
-          alt="Cross-drop"
-        /></button
-      >
-      <span class="main-container-middle-sub-title">Cross-Drop Prevention</span>
+    <div class="dropdown-menu" id="dropdownMenu">
+      <button on:click={handleLogout} id="logout">Logout</button>
+      <a href="{base}/manageAcc">Manage Account</a>
     </div>
-
-    <div class="main-container-right">
-      <button style="border:0 ; background:none" on:click={handleRightClick}>
-        <img
-          src="{base}/images/Gas_station_graphic.png"
-          alt="Gas Station Graphic"
+  </div>
+  <div>
+    <section class="dashboard-container">
+      <div class="live-table">
+        <div style="align-items:center;gap:10px;">
+        <span for="live-table">LIVE</span>
+        <span class="live-indicator"></span>
+        </div>
+        <div class='table-container' id="scrollable-table-container">
+          <table>
+            <tbody>
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+              <tr>
+                <td>13:03</td>
+                <td>274818</td>
+                <td>T2</td>
+                <td>GAS PREM</td>
+              </tr> 
+            </tbody>
+          </table>
+        </div>
+        <div class="scroll-div">
+          <img
+          src="{base}/svg/right-arrow.svg"
+          alt="scroll-arrow"
+          class="table-scroll-btn"
+          id="scroll-btn"
         />
-      </button>
-      <span class="main-container-right-sub-title">Site Data</span>
-    </div>
+        </div>
+      </div>
+      <div class="middle-dashboard">
+        <div class="prevented-cross-drops">
+          <a href="#">cross-drops prevented</a>
+          <span>6 &#8593;</span>
+        </div>
+        <div class="active-trailers">
+          <a href="">active trailers</a>
+          <span>672 &#8593;</span>
 
-    <img
-      src="{base}/svg/right-arrow.svg"
-      alt="right-arrow"
-      class="right-arrow"
-    />
+        </div>
+        <div class="google-maps-usage">
+          <div>
+            <input class="trailer-input" placeholder="Enter Trailer ID" />
+          </div>
+          <div>
+            <input class="site-input" placeholder="Enter Site ID"/>
+          </div>
+          <div>
+            <button class="explore-btn" type="button">EXPLORE </button>
+          </div>
+          <div class="map" id="map">
+          </div>
+        </div>
+      </div>
+      <div class="overview-table">
+        <label for="overview-table">Overview</label>
+        <div class="overview-graph">
+          <div style="background:white; max-width: 25vw;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+            <canvas bind:this={lineCanvas} style="height:25vh;"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="menu-container">
+      <img src="{base}/svg/left-arrow.svg" alt="left-arrow" class="left-arrow" />
+  
+      <div class="main-container-left">
+        <button style="border:0 ; background:none;cursor:pointer;width:60%;" type="button" on:click={handleLeftClick}>
+          <img src="{base}/images/Truck_graphic.png" alt="Truck Graphic" />
+        </button>
+        <span class="main-container-left-sub-title">Vehicle Logging</span>
+      </div>
+  
+      <div class="main-container-middle">
+        <button style="border:0 ; background:none; cursor:pointer;width:85%" type="button"  on:click={handleMiddleClick}>
+          <img
+            src="{base}/images/Cross-drop graphic.png"
+            alt="Cross-drop"
+          /></button
+        >
+        <span class="main-container-middle-sub-title">Cross-Drop Prevention</span>
+      </div>
+  
+      <div class="main-container-right">
+        <button style="border:0 ; background:none;cursor:pointer;width:60%" type="button" on:click={handleRightClick}>
+          <img
+            src="{base}/images/Gas_station_graphic.png"
+            alt="Gas Station Graphic" 
+          />
+        </button>
+        <span class="main-container-right-sub-title">Site Data</span>
+      </div>
+  
+      <img
+        src="{base}/svg/right-arrow.svg"
+        alt="right-arrow"
+        class="right-arrow"
+      />
+      </section>
   </div>
 </main>
 
@@ -381,8 +633,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-bottom: 5vh;
     touch-action: pan-y;
+    background: #014B96;
   }
   ::placeholder {
     color: #ffffff;
@@ -397,7 +649,184 @@
     z-index: 998;
     display: none;
   }
+  .dashboard-container {
+    display:flex;
+    justify-content: space-between;
+    height:80vh;
+    padding: 5vh 5vw 5vh 5vw;
+    width:100vw;
+  }
+  .table-container {
+    height:40vh;
+    overflow-y: hidden;
+    border:none;
+  }
+  .table-scroll-btn {
+    width:7.5%;
+    transform:rotate(90deg)
+  }
+  .scroll-div{ 
+    display:flex;
+    justify-content: center;
+  }
+  .live-indicator {
+    width: 12px;
+    height: 12px;
+    background-color: #ff0000;
+    border-radius: 2px;
+    display: inline-block;
+    margin-left:0.5vw;
+  }
+  .live-table span {
+    font-family: "Mulish", sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: white;
+    margin-left: 1vw;
+  }
 
+  .live-table table {
+    border: 1px solid grey;
+    border-radius: 8px;
+    border-spacing: 0; 
+  }
+  .live-table td {
+    padding: 1rem;
+  }
+  .live-table tr:nth-child(even) {
+    background-color:#f4f5f7;
+  }
+  .live-table tr:nth-child(odd) {
+    background-color:white;
+  }
+  .current-time {
+    font-family: "Mulish", sans-serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: #014b96;
+    padding-left: 1vw;
+  }
+  .middle-dashboard {
+    display:flex;
+    flex-direction: column;
+    gap: 5vh;
+    flex-grow: 0.3;
+    margin-top:2vh;
+  }
+  .search-box {
+    position:relative;
+  }
+  .active-trailers,
+  .prevented-cross-drops {
+    display:flex;
+    flex-direction: row;
+    justify-content: space-between;
+    height:12.5%;
+    border-radius:10px;
+    font-family: "Mulish", sans-serif;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: #014b96;
+    text-transform: uppercase;
+  }
+  .active-trailers a,
+  .prevented-cross-drops a {
+    text-decoration: none;
+  }
+  .active-trailers span,
+  .prevented-cross-drops span {
+    text-decoration: none;
+    font-size:3rem;
+  }
+  .prevented-cross-drops {
+    background-color: #eaf3fc;
+  }
+  .active-trailers {
+    background-color: #f4f5f7;
+  }
+  .google-maps-usage {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(3,0.5fr);
+    height:15vh;
+  }
+  .map {
+    grid-column: 2 ;
+    grid-row: 1 / span 3 ;
+  }
+  .sug-box {
+    position:absolute;
+    top: calc(100% + 6px);
+    left:0;
+    width:15vw;
+    max-height:10vh;
+    z-index: 1000;
+    margin-left:1.5vw;
+    overflow-y:auto;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    background-color: white;
+    border-radius:8px;
+  }
+  .sug-box li {
+    display:none;
+    list-style-type: none;
+    font-size:0.85rem;
+    margin-bottom:1vh;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%2300000" viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.293 14.293l4.707 4.707 1.414-1.414-4.707-4.707A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>');
+    background-repeat: no-repeat;
+    background-size:6.5%;
+    background-position: left 5px bottom ;
+    padding-left: calc( 16px + 0.75vw);
+    overflow-wrap:break-word;
+  }
+  .sug-box.active li{
+    display:block;
+  }
+  .trailer-input,
+  .site-input {
+    background-color: #eaf3fc;
+    color:#014b96;
+    font-family: "Mulish", sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    border:none;
+    border-radius: 4px;
+  }
+  .trailer-input::placeholder,
+  .site-input::placeholder{
+    color:#014b96;
+    font-family: "Mulish", sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+  }
+  .explore-btn {
+    background: transparent;
+    border: none;
+    text-decoration: underline;
+    color:white;
+    font-family: "Mulish", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+  }
+  .sub-header-right {
+    margin-right:2vw;
+  }
+  
+  .overview-table label{
+    color:white;
+    font-family: "Mulish", sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+  }
+  .middle-dashboard a {
+    position:relative;
+    top:50%;
+    left:5%;
+    height:fit-content;
+  }
+  .middle-dashboard a:visited {
+    color:#014b96;
+  }
   @media (max-width: 1000px) {
     .header a:nth-child(2) {
       margin-left: 5%;
@@ -443,7 +872,7 @@
     * {
       font-size: 0.75rem !important;
     }
-    .main-container {
+    .menu-container {
       padding: 0 !important;
       margin-top: 20vh !important;
     }
@@ -456,7 +885,7 @@
     .main-container-right {
       margin-left: 10vw;
     }
-    .main-container span {
+    .menu-container span {
       font-size: 0.5rem !important;
     }
     img.left-arrow {
@@ -465,7 +894,7 @@
     img.right-arrow {
       display: none;
     }
-    .main-container img {
+    .menu-container img {
       width: 20.5vw !important;
     }
     .main-container-middle img {
@@ -477,7 +906,7 @@
     border-radius: 4px;
   }
   .header input {
-    width: 8vw;
+    width: 15vw;
   }
   .header input[type="text"] {
     padding: 1vh 1.5vw 1vh 1.5vw;
@@ -495,12 +924,19 @@
   .header input[type="text"]::placeholder {
     color: rgba(255, 255, 255, 0.7);
   }
+  .sub-header-container{
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
   .sub-header {
     display: flex;
     background-color: #f5f5f5;
     gap: 1vw;
     padding-left: 2.5vw;
     padding-top: 2vh;
+    justify-content: space-between;
+    align-items: center;
   }
   .sub-header div {
     text-align: center;
@@ -520,14 +956,14 @@
   .sub-header-profile-name {
     margin: 1vh auto 0vh auto;
   }
-  .main-container {
+  .menu-container {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     padding: 0 2vw;
-    margin-top: 9vh;
+    margin-bottom: 5vh;
   }
-  .main-container div {
+  .menu-container div {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -548,10 +984,10 @@
   :global(.main-container-middle.transitioning) {
     transform: scale(1);
   }
-  .main-container button {
+  .menu-container button {
     transition: all 0.2s ease;
   }
-  .main-container span {
+  .menu-container span {
     transition: opacity 0.2s ease;
   }
   :global(.transitioning span) {
@@ -571,20 +1007,20 @@
   .main-container-right {
     margin-right: 2.5vw;
   }
-  .main-container img {
-    width: 50%;
+  .menu-container img {
+    width: inherit;
     cursor: pointer;
     transition: transform 0.2s ease;
   }
 
   .main-container-middle img {
-    width: 75%;
+    width: inherit;
   }
 
-  .main-container img:hover {
+  .menu-container img:hover {
     transform: scale(1.05);
   }
-  .main-container span {
+  .menu-container span {
     font-family: "Mulish", sans-serif;
     font-weight: 400;
     font-size: 1rem;
@@ -594,22 +1030,20 @@
     text-align: center;
   }
   img.left-arrow {
-    width: 10%;
+    width: 7.5%;
     height: 10%;
     align-self: center;
     margin-left: 2vw;
     cursor: pointer;
   }
   img.right-arrow {
-    width: 10%;
+    width: 7.5%;
     height: 10%;
     align-self: center;
     margin-right: 2vw;
     cursor: pointer;
   }
-  .sub-header-container {
-    position: relative;
-  }
+ 
   .dropdown-menu {
     display: none;
     position: absolute;
@@ -668,5 +1102,10 @@
   .sub-header-role {
     font-size: 0.9rem;
     text-align: center;
+  }
+  .dashboard-logo {
+    width:8vw !important;
+    height:5vh !important;
+    object-fit: cover;
   }
 </style>
