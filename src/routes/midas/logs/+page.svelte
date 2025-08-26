@@ -3,6 +3,9 @@
     import {base} from '$app/paths';
     import Error from "../../+error.svelte";
     let logs_data = '';
+    let locationAddresses = [
+        {serialNumber: "F6WCVJTPXLQR" , address: "21st Street" }
+    ]
     async function fetchLogs() {
         try {
             const response = await fetch('/api/View_Logs', {
@@ -17,6 +20,11 @@
         } catch (err) {
             console.error("Error fetching logs: ",err);
         }
+    }
+    $: addressBySN = new Map(locationAddresses.map(({ serialNumber, address }) => [serialNumber, address]));
+
+    function parseSNtoAddress(sn) {
+        return addressBySN.get(sn) || "Address not available";
     }
     onMount(async() => {
         fetchLogs();
@@ -50,6 +58,7 @@
                 <tr>
                     <th>Mac Address</th>
                     <th>Serial No</th>
+                    <th>Full Address</th>
                     <th>Start Time</th>
                     <th>Battery Start</th>
                     <th>Tank No</th>
@@ -66,6 +75,7 @@
                 <tr>
                     <td>{row.mac_address}</td>
                     <td>{row.serial_number}</td>
+                    <td> {parseSNtoAddress(row.serial_number)}</td>
                     <td>{row.start_time}</td>
                     <td>{row.battery_start}</td>
                     <td>{row.tank_number}</td>
