@@ -3,7 +3,7 @@
     background: linear-gradient(to bottom, #001338 0%, #014B96 44%);
     position: relative;
     z-index: 1;
-    overflow: hidden;
+    overflow: visible;
 }
 .top-header {
     display: flex;
