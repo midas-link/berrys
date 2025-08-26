@@ -10,6 +10,7 @@
   let rememberMe = false;
   let isLoginError = false;
   let showPopup = false;
+  let showPassword = false;
   $: loginErrorMessage = $page.url.searchParams.get('authMessage') || '';
   async function handleLogin() {
     loginMessage = "";
@@ -107,25 +108,30 @@
           <p class="sign-in-title">Sign in to your account</p>
           <div class="form-group">
             <label for="email"> Your email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              bind:value={email}
-              placeholder="email@domain.com"
-              required
-            />
+            <div class="input-div">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                bind:value={email}
+                placeholder="email@domain.com"
+                required
+              />
+            </div>
           </div>
           <div class="form-group">
             <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              bind:value={password}
-              placeholder="Password"
-              required
-            />
+            <div class="input-div">
+              <input
+                type= {showPassword ? "text" : "password" }
+                id="password"
+                name="password"
+                bind:value={password}
+                placeholder="Password"
+                required
+              />
+              <button type="button" on:click="{() => showPassword = !showPassword}" class="show-pass-btn">	&#128065</button>
+            </div>
           </div>
           <div class="form-group below-password-container">
             <label class="checkbox-container">
@@ -306,13 +312,27 @@
     font-size: 0.875rem;
     font-family: Inter;
   }
-
-  .form-group input[type="email"],
-  .form-group input[type="password"] {
-    width: 100%;
-    padding: 0.75rem;
+  .input-div {
+    width:100%;
+    background-color: #eaf3fc;
     border: 1px solid #ddd;
     border-radius: 4px;
+  }
+  .show-pass-btn {
+    border:none;
+    border-radius: 20px;
+    background:none;
+  }
+  .show-pass-btn:hover {
+    cursor: pointer;
+    background:#737373
+  }
+  .form-group input[type="email"],
+  .form-group input[type="text"],
+  .form-group input[type="password"] {
+    width: 90%;
+    padding: 0.75rem;
+    border:none;
     font-size: 1rem;
     color: #848484;
     background-color: #eaf3fc;
