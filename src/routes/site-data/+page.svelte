@@ -297,7 +297,7 @@
     newDetailsVisible[index] = !newDetailsVisible[index];
     detailsVisible = newDetailsVisible;
   }
-  export function updateDateTime() {
+  function updateDateTime() {
     const datetimeElement = document.getElementById("current-datetime");
 
     // Only update if the element exists

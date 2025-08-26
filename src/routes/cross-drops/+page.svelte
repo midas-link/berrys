@@ -287,7 +287,7 @@
     detailsVisible = newDetailsVisible;
   }
 
-  export function updateDateTime() {
+  function updateDateTime() {
     const datetimeElement = document.getElementById("current-datetime");
 
     if (datetimeElement) {
