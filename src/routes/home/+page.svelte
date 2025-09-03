@@ -4,10 +4,14 @@
   import { goto } from '$app/navigation';
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
   import { PUBLIC_G_MAP_KEY } from '$env/static/public';
+  import { register } from 'swiper/element/bundle';
   import Chart from "chart.js/auto";
   export let data ; 
-  let lineCanvas,lineInstance;
+  let lineCanvas,lineInstance,pieCanvas,pieInstance;
+  let scrolledPosition;
   let graphDrops = 40;
+  let trailerIDinput;
+  let siteIDinput;
   let leftContainer;
   let middleContainer;
   let rightContainer;
@@ -26,7 +30,7 @@
   let map;
   const swipeThreshold = 50;
   async function initMap() {
-  const position = { lat: 52.482899, lng: -1.893460 };
+  const position = { lat: 31.968599, lng: -99.901810 };
   const markerPos = [
   { lat: 52.482899, lng: -1.893460 },
   { lat: 51.484000, lng: -1.894500 },
@@ -253,6 +257,47 @@
       return day + "th";
   }
 }
+function goToZipCode(address) {
+  const geocoder = new google.maps.Geocoder();
+  geocoder.geocode({ 'address': address }, (results, status) => {
+    if (status === 'OK') {
+      const location = results[0].geometry.location;
+      map.setCenter(location);
+      map.setZoom(18); 
+      new google.maps.Marker({
+        map:map,
+        position: location
+      });
+    } else {
+      alert('Geocode was not successful for the following reason: ' + status);
+    }
+  });
+}
+async function handleMapCoords() {
+  const response = await fetch(`/api/siteAddress/${siteIDinput}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+  if(response.ok) {
+   const data = await response.json();
+   console.log(data.zip_code);
+   goToZipCode(data.address);
+  }
+}
+function manageScroll() {
+  scrolledPosition = document.body.scrollTop;
+  if(scrolledPosition >= document.querySelector(".menu-container").offsetHeight) {
+    document.querySelector(".dashboard-header").innerHTML = "Menu";
+    document.querySelector(".dashboard-logo").src = `${base}/images/Menu_icon.png`
+    document.querySelector(".dashboard-logo").style.width = "3.5vw";
+  } else if(scrolledPosition < document.querySelector(".menu-container").offsetHeight) {
+    document.querySelector(".dashboard-header").innerHTML = "Dashboard";
+    // document.querySelector(".dashboard-logo").style.display = "block";
+    document.querySelector(".dashboard-logo").src = `${base}/images/Dashboard-icon.png`
+    document.querySelector(".dashboard-logo").style.width = "8vw";
+
+  }
+}
 function updateDateTime() {
   const datetimeElement = document.getElementById("current-date");
 
@@ -274,9 +319,42 @@ function randomData(length, max = 100) {
   }
   onMount(async() => {
     (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-      key: PUBLIC_G_MAP_KEY,
+      // key: PUBLIC_G_MAP_KEY,
       v: "weekly",
     });
+    register();
+    const swiperEl = document.querySelector('swiper-container')
+
+    const params = {
+      injectStyles: [`
+      .swiper-pagination-bullet {
+        width: 20px;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        font-family: "Mulish", sans-serif;
+        font-size: 10px;
+        color: #000;
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .swiper-pagination-bullet-active {
+        color: #fff;
+        background: #007aff;
+      }
+      `],
+      pagination: {
+        clickable: true,
+        renderBullet: function (index, className) {
+          return '<span class="' + className + '">' + (index + 1) + "</span>";
+        },
+      },
+    }
+
+    Object.assign(swiperEl, params)
+
+    swiperEl.initialize();
     leftContainer = document.querySelector(".main-container-left");
     middleContainer = document.querySelector(".main-container-middle");
     rightContainer = document.querySelector(".main-container-right");
@@ -284,26 +362,11 @@ function randomData(length, max = 100) {
     rightArrow = document.querySelector(".right-arrow");
     dropdownMenu = document.getElementById("dropdownMenu");
     subHeaderProfile = document.querySelector(".sub-header-profile");
-    mainSwipeContainer = document.querySelector(".main-container");
-    const scrollButton = document.getElementById("scroll-btn");
-    const tableContainer = document.getElementById("scrollable-table-container")
-    scrollButton.addEventListener('click',() => {
-      if(tableContainer.scrollTop + tableContainer.clientHeight < tableContainer.scrollHeight) { 
-      tableContainer.scrollBy({
-        top: 50,
-        behavior:"smooth"
-      })
-    } else {
-      console.log("user has reached bottom, scrolling back up.");
-      tableContainer.scroll({
-        top: 0,
-        behavior:"smooth"
-      })
-    }
-    })
+    mainSwipeContainer = document.querySelector(".menu-container");
     const clickMoveLeft = () => moveContainers("left");
     const clickMoveRight = () => moveContainers("right");
     updateDateTime();
+    document.body.addEventListener('scroll',manageScroll);
     const interval = setInterval(updateDateTime, 1000);
     if (leftArrow) leftArrow.addEventListener("click", clickMoveLeft);
     if (rightArrow) rightArrow.addEventListener("click", clickMoveRight);
@@ -322,6 +385,33 @@ function randomData(length, max = 100) {
       });
       mainSwipeContainer.addEventListener("touchend", handleTouchEnd);
     }
+    pieInstance = new Chart(pieCanvas, {
+      type: "pie",
+      data: {
+        labels: ["Diesel #2", "Gas 91 No Eth", "Gas 87 No Eth", "Gas 93 OCTANE"],
+        datasets: [
+          {
+            label: "",
+            data: randomData(4),
+            backgroundColor: [
+              "rgba(255, 99, 132, 0.7)",
+              "rgba(255, 205, 86, 0.7)",
+              "rgba(54, 162, 235, 0.7)",
+              "rgba(75, 192, 192, 0.7)"
+            ]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true },
+          title: { display: true, text: "Delivery Breakdown",font: {
+            size:25
+          } }
+        }
+      }
+    });
     lineInstance = new Chart(lineCanvas, {
       type: "line",
       data: {
@@ -355,7 +445,7 @@ function randomData(length, max = 100) {
       if (subHeaderCompany)
         subHeaderCompany.removeEventListener("click", toggleDropdown);
       document.removeEventListener("click", handleClickOutside);
-
+      document.body.removeEventListener('scroll',manageScroll);
       if (mainSwipeContainer) {
         mainSwipeContainer.removeEventListener("touchstart", handleTouchStart);
         mainSwipeContainer.removeEventListener("touchmove", handleTouchMove);
@@ -369,6 +459,9 @@ function randomData(length, max = 100) {
 <svelte:head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" 
+      href=
+"https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
   <link
     href="https://fonts.googleapis.com/css?family=Mulish"
     rel="stylesheet"
@@ -456,7 +549,7 @@ function randomData(length, max = 100) {
       </div>
       <div class="sub-header-middle">
         <img class="dashboard-logo" src={`${base}/images/Dashboard-icon.png`} alt="dashboard-logo"  />
-        <h1 style="margin:0"> Dashboard</h1>
+        <h1 class="dashboard-header" style="margin:0"> Dashboard</h1>
       </div>
       <div class="sub-header-right">
         <span class="current-time" id="current-date"></span>
@@ -534,46 +627,110 @@ function randomData(length, max = 100) {
             </tbody>
           </table>
         </div>
-        <div class="scroll-div">
-          <img
-          src="{base}/svg/right-arrow.svg"
-          alt="scroll-arrow"
-          class="table-scroll-btn"
-          id="scroll-btn"
-        />
+        <div style="margin-top:2vh;">
+          <div class="delivery-breakdown">
+            <div style="background:white; max-width: 25vw;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+              <canvas bind:this={pieCanvas} style="height:15vh;"></canvas>
+            </div>
+          </div>
         </div>
       </div>
       <div class="middle-dashboard">
+        <div class="middle-header">
+          <div style="display:flex;flex-direction:row;margin-left:auto">
+            <div> 
+              <img
+              src="{base}/svg/arrow-left-3-svgrepo-com.svg"
+              alt="scroll-arrow"
+              class="graph-scroll-btn-left"
+              id="graph-scroll-btn-left"/>
+            </div>
+            <div>
+               <img
+              src="{base}/svg/arrow-right-3-svgrepo-com.svg"
+              alt="scroll-arrow"
+              class="graph-scroll-btn-right"
+              id="graph-scroll-btn-right"  />
+          </div>
+          </div>
+        </div>
         <div class="prevented-cross-drops">
           <a href="#">cross-drops prevented</a>
-          <span>6 &#8593;</span>
+          <span>6 <span style="color:gold;margin-left:1vw;padding-bottom:2vh;font-size:3.5rem">&#8593;</span></span>
         </div>
         <div class="active-trailers">
           <a href="">active trailers</a>
-          <span>672 &#8593;</span>
+          <span>672<span style="color:gold;margin-left:1vw;padding-bottom:2vh;font-size:3.5rem">&#8593;</span> </span>
+          
 
         </div>
         <div class="google-maps-usage">
           <div>
-            <input class="trailer-input" placeholder="Enter Trailer ID" />
+            <input class="trailer-input" placeholder="Enter Trailer ID" bind:value={trailerIDinput}/>
           </div>
           <div>
-            <input class="site-input" placeholder="Enter Site ID"/>
+            <input class="site-input" placeholder="Enter Site ID" bind:value="{siteIDinput}"/>
           </div>
           <div>
-            <button class="explore-btn" type="button">EXPLORE </button>
+            <button class="explore-btn" type="button" on:click={handleMapCoords}>EXPLORE </button>
           </div>
           <div class="map" id="map">
           </div>
         </div>
       </div>
       <div class="overview-table">
-        <label for="overview-table">Overview</label>
-        <div class="overview-graph">
-          <div style="background:white; max-width: 25vw;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
-            <canvas bind:this={lineCanvas} style="height:25vh;"></canvas>
+        <div style="display:flex;flex-direction:row;position:relative;">
+          <div class="right-header">
+            <label for="overview-table">Overview</label>
+            <!-- <div style="display:flex;flex-direction:row;margin-left:auto">
+              <div> 
+                <img
+                src="{base}/svg/arrow-left-3-svgrepo-com.svg"
+                alt="scroll-arrow"
+                class="graph-scroll-btn-left"
+                id="graph-scroll-btn-left"/>
+              </div>
+              <div>
+                <img
+                src="{base}/svg/arrow-right-3-svgrepo-com.svg"
+                alt="scroll-arrow"
+                class="graph-scroll-btn-right"
+                id="graph-scroll-btn-right"  />
+            </div>
+            </div> -->
           </div>
         </div>
+        <div class="overview-graph">
+          <swiper-container class="my-swiper" init="false" autoplay-delay="8000" loop="true">
+            <swiper-slide>
+              <div style="height:100%">
+                <div style="background-color:#dfefe9;height:50%;align-items:center;display:flex;justify-content:center" >
+                  <span style="font-size:4rem;font-weight: 400;color: #014b96;">92% </span> <span style="height:4vh;background-color:green;border-radius:50%;margin-left: 2vw;font-size:2rem;font-weight: 400;color: white;line-height: 4.25vh;width:2.75vw"> &#10003;</span>
+                </div>
+                <div style="display:flex;flex-direction:column">
+                  <span style="font-size:1.5rem;font-weight: 400;color: #014b96;">Fleet Confidence</span>
+                   Score based on valve health, fuel verification accuracy, and black box sync rate.
+                </div>
+              </div>
+            </swiper-slide>
+            <swiper-slide>
+              <div style="background:white;height:90%; max-width: 25vw;padding: 1rem;justify-content:center;display:flex;">
+                <canvas bind:this={lineCanvas} ></canvas>
+              </div> 
+            </swiper-slide>
+          </swiper-container>
+       
+        </div>
+        <div class="this-week-container">
+          <span class="this-week-header">This Week's Wins</span>
+          <div class="this-week-div">
+            <div> Verified Deliveries  <span> 89 </span> </div> 
+            <div> Cross-Drops Prevented <span> 6 </span> </div>
+            <div> High-Risk Mismatch Blocked <span> 1 </span> </div>
+            <div> Units flagged for Maintenance <span> 2 </span> </div>
+          </div>
+        </div>
+        
       </div>
     </section>
     <section class="menu-container">
@@ -635,7 +792,6 @@ function randomData(length, max = 100) {
     display: flex;
     flex-direction: column;
     touch-action: pan-y;
-    background: #014B96;
   }
   ::placeholder {
     color: #ffffff;
@@ -653,22 +809,15 @@ function randomData(length, max = 100) {
   .dashboard-container {
     display:flex;
     justify-content: space-between;
-    height:80vh;
+    height:100vh;
     padding: 5vh 5vw 5vh 5vw;
     width:100vw;
+    background: linear-gradient(to right, #001338 0%, #014B96 50%);
   }
   .table-container {
     height:40vh;
-    overflow-y: hidden;
+    overflow-y: scroll;
     border:none;
-  }
-  .table-scroll-btn {
-    width:7.5%;
-    transform:rotate(90deg)
-  }
-  .scroll-div{ 
-    display:flex;
-    justify-content: center;
   }
   .live-indicator {
     width: 12px;
@@ -713,6 +862,7 @@ function randomData(length, max = 100) {
     gap: 5vh;
     flex-grow: 0.3;
     margin-top:2vh;
+    position:relative;
   }
   .search-box {
     position:relative;
@@ -729,6 +879,10 @@ function randomData(length, max = 100) {
     font-weight: 400;
     color: #014b96;
     text-transform: uppercase;
+    align-items: end;
+    padding-bottom:1vh;
+    padding-left:1vw;
+    padding-right:1vw;
   }
   .active-trailers a,
   .prevented-cross-drops a {
@@ -738,6 +892,7 @@ function randomData(length, max = 100) {
   .prevented-cross-drops span {
     text-decoration: none;
     font-size:3rem;
+    padding-bottom:1vh
   }
   .prevented-cross-drops {
     background-color: #eaf3fc;
@@ -754,6 +909,8 @@ function randomData(length, max = 100) {
   .map {
     grid-column: 2 ;
     grid-row: 1 / span 3 ;
+    border:solid 4px white;
+    border-radius: 8px;
   }
   .sug-box {
     position:absolute;
@@ -812,18 +969,14 @@ function randomData(length, max = 100) {
   .sub-header-right {
     margin-right:2vw;
   }
-  
+  .overview-table {
+    margin-top:2vh;
+  }
   .overview-table label{
     color:white;
     font-family: "Mulish", sans-serif;
     font-size: 1.25rem;
     font-weight: 400;
-  }
-  .middle-dashboard a {
-    position:relative;
-    top:50%;
-    left:5%;
-    height:fit-content;
   }
   .middle-dashboard a:visited {
     color:#014b96;
@@ -945,7 +1098,7 @@ function randomData(length, max = 100) {
     font-family: "Mulish", sans-serif;
     font-weight: 600;
   }
-  .sub-header img {
+  .sub-header-profile img {
     width: 5vh;
     height: 5vh;
     display: block;
@@ -960,9 +1113,10 @@ function randomData(length, max = 100) {
   .menu-container {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     padding: 0 2vw;
     margin-bottom: 5vh;
+    height:100vh;
   }
   .menu-container div {
     display: flex;
@@ -1031,14 +1185,14 @@ function randomData(length, max = 100) {
     text-align: center;
   }
   img.left-arrow {
-    width: 7.5%;
+    width: 35px;
     height: 10%;
     align-self: center;
     margin-left: 2vw;
     cursor: pointer;
   }
   img.right-arrow {
-    width: 7.5%;
+    width: 35px;
     height: 10%;
     align-self: center;
     margin-right: 2vw;
@@ -1105,8 +1259,65 @@ function randomData(length, max = 100) {
     text-align: center;
   }
   .dashboard-logo {
-    width:8vw !important;
-    height:5vh !important;
+    width:8vw ;
+    height:5vh ;
     object-fit: cover;
   }
+  .graph-scroll-btn-right,
+  .graph-scroll-btn-left {
+    height:4vh;
+  }
+  .middle-header {
+    position:absolute;
+    bottom:100%;
+    right:0;
+  }
+  .right-header {
+    position:absolute;
+    bottom:100%;
+    display:flex;
+    flex-direction: row;
+    width:100%;
+  }
+  .this-week-container {
+    margin-top: 2vh;
+  }
+  .this-week-div {
+    background:white; 
+    max-width: 25vw;
+    border: 1px solid #014B96;
+    padding: 1rem;
+    border-radius: 10px;
+    display:flex;
+    flex-direction: column;
+    gap: 1.5vh;
+  }
+  .this-week-div div {
+    display:flex ;
+    flex-direction: row;
+  }
+  .this-week-div div > span {
+    margin-left: auto;
+    color:#014b96;
+    font-family: "Mulish", sans-serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  }
+  .this-week-header {
+  color: white;
+  font-family: "Mulish", sans-serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  }
+  swiper-container {
+      max-width: 25vw;
+      height: 25vh;
+    }
+    swiper-slide {
+      text-align: center;
+      font-size: 18px;
+      background: white;
+
+    }
+
 </style>
