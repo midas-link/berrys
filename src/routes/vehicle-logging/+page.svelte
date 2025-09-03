@@ -7,6 +7,8 @@
   import DropdownField from "./DropdownField.svelte";
   import { get } from "svelte/store";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  import { autoTable } from 'jspdf-autotable';
+
   const currentPath = get(page).url.pathname;
 
   function openDetails(row) {
@@ -353,6 +355,9 @@
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${timestamp}`, 14, 25);
 
+      doc.addImage(`${base}/images/Midas_Link_logo.jpeg`, "jpeg",150,0,20,20);
+      doc.addImage(`${base}/images/circle-k-logo.png`, "png",181,5,15,15);
+
       const headers = [
         "Date",
         "Time",
@@ -374,7 +379,7 @@
         `T${row.tank_number || ""}`,
       ]);
 
-      doc.autoTable({
+      autoTable(doc,{
         head: [headers],
         body: body,
         startY: 30,

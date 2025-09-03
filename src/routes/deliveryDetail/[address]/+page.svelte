@@ -4,6 +4,7 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { get } from "svelte/store";
+  import { autoTable } from 'jspdf-autotable';
   export let data;
 
   const currentPath = get(page).url.pathname;
@@ -171,6 +172,9 @@
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${timestamp}`, 14, 25);
 
+      doc.addImage(`${base}/images/Midas_Link_logo.jpeg`, "jpeg",150,0,20,20);
+      doc.addImage(`${base}/images/circle-k-logo.png`, "png",181,5,15,15);
+
       const originalTable = document.querySelector("table"); 
       if (!originalTable) throw new Error("Table not found");
 
@@ -182,7 +186,7 @@
         if (cell) cell.textContent = "";
       });
 
-      doc.autoTable({
+      autoTable(doc,{
         html: exportTable,
         startY: 30,
         styles: {

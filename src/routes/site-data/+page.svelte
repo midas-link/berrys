@@ -6,6 +6,7 @@
   import { page } from "$app/stores";
   import { get } from "svelte/store";
   import { PUBLIC_API_BASE_URL } from "$env/static/public";
+  import { autoTable } from 'jspdf-autotable';
   const currentPath = get(page).url.pathname;
   function openDetails(row) {
     goto(`${base}/deliveryDetail/${row.Zip}`, {
@@ -489,6 +490,9 @@
       doc.setFont("helvetica", "normal");
       doc.text(`Generated: ${timestamp}`, 14, 25);
 
+      doc.addImage(`${base}/images/Midas_Link_logo.jpeg`, "jpeg",150,0,20,20);
+      doc.addImage(`${base}/images/circle-k-logo.png`, "png",181,5,15,15);
+
       // Get the specific table you want to export
       const originalTable = document.querySelector("table"); // Use a more specific selector
       if (!originalTable) throw new Error("Table not found");
@@ -503,7 +507,7 @@
       });
 
       // Generate the table in PDF
-      doc.autoTable({
+      autoTable(doc,{
         html: exportTable,
         startY: 30,
         styles: {
