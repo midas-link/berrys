@@ -13,14 +13,27 @@
   let verificationMessage = "";
   let verificationError = false;
   let editingUserId = null;
+  let editingUserCompany = null;
   let buOptions = [];
+  let companyOptions = []
   let actionConfirmed = false;
   let showConfirmDialog = false;
   let confirmMessage = "";
   let confirmCallback = null;
   let userToDelete = null;
+  $: if($page.form) {
+    verificationError = !$page.form.ok;
+    verificationMessage = $page.form.message || "";
+    if($page.form.refresh) {
+      selectedUserIds = [];
+      fetchUsers();
+    }
+  }
   function editBusinessUnit(userId) {
     editingUserId = userId;
+  }
+  function editCompanyName(userId) {
+    editingUserCompany = userId;
   }
 
   function confirmAction(message, callback) {
@@ -46,6 +59,7 @@
 
   function cancelEdit() {
     editingUserId = null;
+    editingUserCompany = null;
   }
 
   function deleteUser(userId) {
@@ -57,7 +71,7 @@
       async () => {
         try {
           const response = await fetch("/api/deleteUser", {
-            method: "DELETE",
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
@@ -127,6 +141,48 @@
       editingUserId = null;
     }
   }
+  async function saveCompanyName(userId, newCompanyName) {
+    try {
+      const response = await fetch("/api/admin/setCompanyName", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          selectedUserIds: [userId],
+          coName: newCompanyName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        users = users.map((user) => {
+          if (user.user_id === userId) {
+            return { ...user, company_name: newCompanyName };
+          }
+          return user;
+        });
+
+        verificationError = false;
+        verificationMessage =
+          data.message ||
+          `Company Name for user ${userId} updated successfully.`;
+      } else {
+        verificationError = true;
+        verificationMessage =
+          data.error || `Failed to update Company name for user ${userId}.`;
+        console.error("API Error:", data.error);
+      }
+    } catch (err) {
+      verificationError = true;
+      verificationMessage = `An error occurred: ${err.message}`;
+      console.error("Client-side Error:", err);
+    } finally {
+      editingUserCompany = null;
+    }
+  }
   function searchUser(searchedUser) {
     filteredUsers = [];
     if (searchedUser.length === 0) filtered = false;
@@ -142,38 +198,38 @@
     });
     console.log(filteredUsers);
   }
-  async function handleVerifyUsers() {
-    if (selectedUserIds.length === 0) {
-      alert("Please select at least on user to verify.");
-      return;
-    }
-    try {
-      const response = await fetch("/api/admin/verifyUsers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          selectedUserIds: selectedUserIds,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        selectedUserIds = [];
-        verificationError = false;
-        verificationMessage = data.message || "Users verified successfully!";
-        filteredUsers = [];
-        await fetchUsers();
-      } else {
-        verificationError = true;
-        verificationMessage = data.error || "Verification failed.";
-      }
-    } catch (err) {
-      verificationError = true;
-      verificationMessage = err.message || "Client-side error occurred.";
-    }
-  }
+  // async function handleVerifyUsers() {
+  //   if (selectedUserIds.length === 0) {
+  //     alert("Please select at least on user to verify.");
+  //     return;
+  //   }
+  //   try {
+  //     const response = await fetch("/api/admin/verifyUsers", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       credentials: "include",
+  //       body: JSON.stringify({
+  //         selectedUserIds: selectedUserIds,
+  //       }),
+  //     });
+  //     const data = await response.json();
+  //     if (response.ok) {
+  //       selectedUserIds = [];
+  //       verificationError = false;
+  //       verificationMessage = data.message || "Users verified successfully!";
+  //       filteredUsers = [];
+  //       await fetchUsers();
+  //     } else {
+  //       verificationError = true;
+  //       verificationMessage = data.error || "Verification failed.";
+  //     }
+  //   } catch (err) {
+  //     verificationError = true;
+  //     verificationMessage = err.message || "Client-side error occurred.";
+  //   }
+  // }
   async function handleLogout() {
     await goto(
       `${base}/login?authMessage=${encodeURIComponent("You have been logged out.")}`
@@ -202,6 +258,8 @@
       users = await response.json();
       const allbuOptions = users.map((BU) => BU.business_unit);
       buOptions = [...new Set(allbuOptions)];
+      const allcoNameOptions = users.map((coNAME) => coNAME.company_name);
+      companyOptions = [...new Set(allcoNameOptions)];
       console.log("Admin users loaded:", users);
     } catch (err) {
       console.error("Error fetching admin users:", err);
@@ -271,7 +329,7 @@
     </span>
   {/if}
   <div class="data-container">
-    <form on:submit|preventDefault={handleVerifyUsers}>
+    <form method="POST">
       <table class="desktop-view">
         <thead>
           <tr>
@@ -284,7 +342,6 @@
             <th>Is Admin</th>
             <th>Business Unit</th>
             <th>Verification Status</th>
-            <th>Verify user</th>
             <th></th>
           </tr>
         </thead>
@@ -303,7 +360,44 @@
                 <td data-label="User ID">{row.user_id}</td>
                 <td data-label="Full Name">{row.first_name} {row.last_name}</td>
                 <td data-label="Title">{row.title} </td>
-                <td data-label="Company Name">{row.company_name}</td>
+                <td data-label="Company Name">
+                {#if editingUserCompany === row.user_id}
+                <div class="edit-mode-container">
+                  <input
+                    type="text"
+                    bind:value={row.company_name}
+                    placeholder="Company Name"
+                    list="coList"
+                  />
+                  <datalist id="coList">
+                    {#each companyOptions as companyName}
+                      <option value={companyName}></option>
+                    {/each}
+                  </datalist>
+                  <button
+                    on:click={() =>
+                      saveCompanyName(row.user_id, row.company_name)}
+                    class="header-btn"
+                    type="button">Save</button
+                  >
+                  <button
+                    on:click={() => cancelEdit()}
+                    type="button"
+                    class="header-btn">Cancel</button
+                  >
+                </div>
+              {:else}
+                <div class="view-mode-container">
+                  {row.company_name}
+                  <button
+                    on:click={() =>
+                      editCompanyName(row.user_id, row.company_name)}
+                    class="header-btn"
+                    type="button">Edit</button
+                  >
+                </div>
+              {/if}
+            </td>
                 <td data-label="Email">{row.email}</td>
                 <td data-label="Phone Number">{row.phone_number}</td>
                 <td data-label="Is Admin">{row.is_admin ? "Yes" : "No"}</td>
@@ -345,16 +439,14 @@
                     </div>
                   {/if}
                 </td>
-                <td data-label="Verification Status"
-                  >{row.verify_user ? "Verified" : "Not verified"}</td
-                >
-                <td data-label="Verify user"
-                  ><input
-                    type="checkbox"
-                    bind:group={selectedUserIds}
-                    value={row.user_id}
-                    disabled={row.verify_user}
-                  />
+                <td data-label="Verification Status">
+                  {#if row.verify_user}
+                    Verified
+                    <input name="selectedUserIds" type="checkbox" bind:group={selectedUserIds} value={row.user_id} />
+                  {:else}
+                    Unverified
+                    <input name="selectedUserIds" type="checkbox" bind:group={selectedUserIds} value={row.user_id} />
+                  {/if}
                 </td>
                 <td
                   ><button
@@ -368,12 +460,17 @@
           {/if}
         </tbody>
       </table>
-      <button type="submit" class="header-btn verify-button-desktop">
-        Verify Selected Users
-      </button>
-      <button type="submit" class="header-btn verify-button-mobile">
-        Verify Selected Users
-      </button>
+      <div class="submit-div">
+        <button type="submit" formaction="?/verify" class="header-btn verify-button-desktop">
+          Verify Selected Users
+        </button>
+        <button type="submit" formaction="?/unverify" class="header-btn verify-button-desktop">
+          Unverify Selected Users
+        </button>
+        <button type="submit" formaction="?/verify" class="header-btn verify-button-mobile">
+          Verify Selected Users
+        </button>
+      </div>
     </form>
   </div>
 
@@ -514,7 +611,7 @@
     color: white;
   }
   .data-container {
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .desktop-view {
@@ -647,5 +744,9 @@
     padding: 5px 10px;
     font-size: 0.8rem;
     white-space: nowrap;
+  }
+  .submit-div {
+    display:flex;
+    flex-direction: row;
   }
 </style>
