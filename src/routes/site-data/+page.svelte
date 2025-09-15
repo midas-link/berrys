@@ -137,7 +137,7 @@
     } catch (error) {
       console.error("Error fetching prevented delivery events:", error);
       eventsError =
-        "Failed to load prevented delivery events data. Please try again.";
+        "Failed to load delivery events data. Please try again.";
     } finally {
       eventsLoading = false;
     }

@@ -8,7 +8,6 @@
     const day = String(today.getDate()).padStart(2, '0');
     const todayFormatted = `${year}-${month}-${day}`;
     let installed_date = todayFormatted;
-    console.log(installed_date);
     let responseMessage = '';
     let isError = false;
     let macAddressError = '';
@@ -16,6 +15,7 @@
     export let data ;
     let installer_name = data.user.firstName + " " +  data.user.lastName;
     let installer_contact = data.user.phoneNumber;
+    console.log("users company name: ",data.user.companyName);
     function validateMacAddress(mac) {
         mac = mac.trim();
         

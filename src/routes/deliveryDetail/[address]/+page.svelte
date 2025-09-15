@@ -18,7 +18,6 @@
   $: previousURL = $page.state?.from;
   $: vehicleNumber = deliveryDetails[0]["Trailer No."];
   function gotoVehicle() {
-    //fix this to be the correct vehicle since there might be multiple vehicles
     goto(`${base}/vehicle/${vehicleNumber}`, {
       state: {
         from: currentPath,
