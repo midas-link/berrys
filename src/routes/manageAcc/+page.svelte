@@ -9,6 +9,15 @@
   let changePasswordError = false;
   let newPassword = "";
   let confirmPassword ="";
+  function handleActiveForm(activeForm) {
+    if(activeForm === ".pass-div") {
+      document.getElementById('pass-div').style.display = "block";
+      document.getElementById('pref-div').style.display = "none";
+    } else if(activeForm === ".pref-div") {
+      document.getElementById('pref-div').style.display = "block";
+      document.getElementById('pass-div').style.display = "none";
+    }
+  }
   async function handlePasswordChange() {
     changePasswordMessage = "";
     changePasswordError = false;
@@ -165,7 +174,13 @@
         <div class="header-role">(Area Manager)</div>
       </div>
     </div>
+    <div class="active-btn-div" style="display:flex;flex-direction:row;">
+      <button on:click={() => handleActiveForm(".pass-div")} type="button"> Password</button>
+      <button on:click={() => handleActiveForm(".pref-div")} type="button"> Preference</button>
+      </div>
     <div class="form-container">
+      
+      <div id="pass-div">
       <form on:submit|preventDefault={handlePasswordChange}>
         {#if changePasswordMessage}
           <p style="color: {changePasswordError ? 'red' : 'green'};">{changePasswordMessage}</p>
@@ -173,13 +188,13 @@
         <div class="form-row">
 
         <label for="current-password">Current Password:</label>
-<input
-  type="password"
-  bind:value={currentPassword}
-  id="current-password"
-  name="current-password"
-/> 
-</div>  
+        <input
+          type="password"
+          bind:value={currentPassword}
+          id="current-password"
+          name="current-password"
+        /> 
+        </div>  
         <div class="form-row">
           <label for="change-password">Change Password:</label>
           <input type="password" bind:value={newPassword} id="change-password" name="change-password" required />
@@ -195,6 +210,21 @@
         </div>
         <button type="submit">Reset</button>
       </form>
+      </div>
+      <div id="pref-div" style="display:none;">
+        <form on:submit|preventDefault={handleChangePreference}>
+          <div class="form-row">
+            <label for="change-sms">Receive alerts via SMS:</label>
+            <input type="checkbox" id="change-sms" name="change-sms" required />
+          </div>
+          <div class="form-row">
+            <label for="change-email">Receive alerts via Email:</label>
+            <input type="checkbox" id="change-email" name="change-email" required />
+          </div>
+          <button type="submit">Submit</button>
+
+        </form>
+      </div>
     </div>
   </div>
 </main>
@@ -376,12 +406,11 @@
     font-weight: 500;
     font-size: 1rem;
     display: flex;
+    flex-direction: column;
     justify-content: center;
-    align-items: center;
-    padding: 4vh 4vh 4vh 4vh;
+    padding: 4vh 4vw 4vh 4vw;
     width: fit-content;
-    margin-top: 2vh;
-  }
+    }
   .form-container input {
     padding: 0.5vh 0.5vh 0.5vh 0.5vh;
     border-radius: 2px;
@@ -390,18 +419,21 @@
   }
   .form-row {
     display: flex;
-    align-items: center; 
+    flex-direction: row;
+    align-items: flex-start; 
     margin-bottom: 4vh; 
+    gap:1rem;
+    min-width: -moz-available;
   }
   .form-row label {
-    margin-right: 3vh; 
+    flex: 0 0 10vw;
   }
   .form-container form {
     display: flex;
     flex-direction: column; 
     align-items: center; 
   }
-  .form-container button {
+  form button {
     background-color: #014b96;
     color: white;
     border-radius: 15px;
@@ -414,5 +446,26 @@
   }
   .form-container button:hover {
     background-color: #012f5e;
+  }
+  .active-btn-div button {
+    background-color: #014b96;
+    color: white;
+    text-align: center;
+    border:none;
+    padding: 0.25vh 2vw 0.25vh 2vw;
+    font-family: "Mulish", sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor:pointer;
+    transition-duration: 0.4s;
+  }
+  .active-btn-div button:hover {
+    background-color:#0e65bd
+  }
+  .active-btn-div button:first-child{
+    border-radius: 10px 0 0 0;
+  }
+  .active-btn-div button:last-child{
+    border-radius: 0 10px 0 0;
   }
 </style>
