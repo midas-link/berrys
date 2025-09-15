@@ -6,6 +6,7 @@
   import { PUBLIC_G_MAP_KEY } from '$env/static/public';
   import { register } from 'swiper/element/bundle';
   import Chart from "chart.js/auto";
+  import { formatDate } from "$lib/scripts/vehicle-logging";
   export let data ; 
   let lineCanvas,lineInstance,pieCanvas,pieInstance;
   let scrolledPosition;
@@ -28,6 +29,10 @@
   let touchStartX = 0;
   let touchEndX = 0;
   let map;
+  let allEvents ;
+  let eventsLoading = true;
+  let eventsError = null;
+  let detailsVisible = [];
   const swipeThreshold = 50;
   async function initMap() {
   const position = { lat: 31.968599, lng: -99.901810 };
@@ -47,6 +52,55 @@
     mapId: "DEMO_MAP_ID",
   });
 }
+function formatEpochToDisplay(timestamp) {
+    if (typeof timestamp !== "number" || isNaN(timestamp)) return "";
+    const date = new Date(timestamp * 1000);
+    return date
+      .toLocaleDateString("en-GB", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, ".");
+  }
+  function getRowClass(index) {
+    return index % 2 === 0 ? "row-even" : "row-odd";
+  }
+  function toggleDetails(index) {
+    let newDetailsVisible = [...detailsVisible];
+    newDetailsVisible[index] = !newDetailsVisible[index];
+    detailsVisible = newDetailsVisible;
+  }
+  function formatEpochToTime(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+async function fetchEventsData() {
+    try {
+      eventsLoading = true;
+      eventsError = null;
+      console.log("Fetching prevented delivery events from API...");
+      const response = await fetch(`/api/Site_Data`, {
+        method: 'GET',
+        credentials:'include'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log("Prevented Delivery Events Data Loaded:", data);
+      allEvents = data;
+    } catch (error) {
+      console.error("Error fetching prevented delivery events:", error);
+      eventsError = "Failed to load delivery events data. Please try again later."
+    } finally {
+      eventsLoading= false;
+    }
+  }
   async function handleLogout(){
         try {
         const response = await fetch(`/api/logout` , {
@@ -306,12 +360,18 @@ function updateDateTime() {
     const day = now.getDate();
     const weekdayOptions = { weekday: "long" };
     const monthOptions = { month: "long" };
+    const options = {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12:true,
+    };
 
     const formattedWeekday = now.toLocaleDateString("en-GB", weekdayOptions);
     const formattedMonth = now.toLocaleDateString("en-GB", monthOptions);
     const formattedDay = getDayWithOrdinal(day);
 
-    datetimeElement.textContent = `${formattedWeekday} ${formattedDay} ${formattedMonth}`;
+    datetimeElement.textContent = `${formattedWeekday} ${formattedDay} ${formattedMonth} ${now.toLocaleTimeString("en-US", options)}`;
   }
 }
 function randomData(length, max = 100) {
@@ -319,21 +379,21 @@ function randomData(length, max = 100) {
   }
   onMount(async() => {
     (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-      // key: PUBLIC_G_MAP_KEY,
+      //  key: PUBLIC_G_MAP_KEY,
       v: "weekly",
     });
     register();
     const swiperEl = document.querySelector('swiper-container')
-
+    fetchEventsData();
     const params = {
       injectStyles: [`
       .swiper-pagination-bullet {
-        width: 20px;
-        height: 20px;
+        width: 10px;
+        height: 10px;
         text-align: center;
         line-height: 20px;
         font-family: "Mulish", sans-serif;
-        font-size: 10px;
+        font-size: 0px;
         color: #000;
         opacity: 1;
         background: rgba(0, 0, 0, 0.2);
@@ -494,13 +554,13 @@ function randomData(length, max = 100) {
       <a href="{base}/analytics">Analytics</a>
       <div class="search-box">
         <input type="text" bind:value={input} on:input={handleSearchbar} placeholder="Search..." /> 
-        <div class="sug-box" class:active={showSuggestions}>
+        <!-- <div class="sug-box" class:active={showSuggestions}>
           {#if searchResults}
           {#each searchResults as row}
           <li>{row.address}  {row.code ? `, ${row.code}` : "" } </li>  
           {/each}
           {/if}
-        </div>
+        </div> -->
       </div>
       <img src="{base}/images/Midas_Link_logo.png" alt="Berrys Logo" />
     </div>
@@ -563,73 +623,71 @@ function randomData(length, max = 100) {
   <div>
     <section class="dashboard-container">
       <div class="live-table">
-        <div style="align-items:center;gap:10px;">
+        <div>
         <span for="live-table">LIVE</span>
         <span class="live-indicator"></span>
         </div>
         <div class='table-container' id="scrollable-table-container">
           <table>
             <tbody>
+              {#if eventsLoading}
               <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
+                <td colspan="5" style="text-align: center; padding: 20px;"
+                >Loading events...</td>
+              </tr>
+              {:else if eventsError}
               <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
+                <td colspan="5"style="text-align: center; padding: 20px; color: red;">{eventsError}</td>
+              </tr>
+              {:else if allEvents.length > 0}
+               {#each allEvents as row, index}
+              <tr class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" on:click={() => toggleDetails(index)}>
+                <td>{formatEpochToTime(row["Delivery End"])}</td>
+                <td>{row.SiteCode}</td>
+                <td>T{row.tank_number}</td>
+                <td style="text-align:center">{row.Delivered}</td>
+              </tr>
+              {#if detailsVisible[index]}
+              <tr class="details-row {getRowClass(index)} on:click={() => toggleDetails(index)}">
+                <td colspan="4">
+              <div class="details-content">
+                <div class="detail-row">
+                  {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(
+                    row["Delivery Start"]
+                  ) || ""} to {formatEpochToTime(row["Delivery End"]) || ""}
+                </div>
+                <div class="detail-row">
+                  <span class="label">Site Code:</span>
+                  {row.SiteCode} | <span class="label">Business Unit:</span>
+                  {row.BusinessUnitName || ""}
+                </div>
+                <div class="detail-row">
+                  <span class="label">Full Address:</span>
+                  {row.Address || ""}, {row.City || ""}
+                  {row.State || ""} | {row.Zip || ""}
+                </div>
+                <div class="detail-row">
+                  <span class="label">Fuel Dropped:</span>
+                  {row.Delivered} | <span class="label">Tank:</span>
+                  T{row.tank_number}
+                </div>
+              </div>
+            </td>
+            </tr>
+              {/if}
+              {/each}
+              {:else}
               <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
-              <tr>
-                <td>13:03</td>
-                <td>274818</td>
-                <td>T2</td>
-                <td>GAS PREM</td>
-              </tr> 
+                <td colspan="4" style="text-align: center; padding: 20px;"
+                  >No results found</td>
+              </tr>
+              {/if}
             </tbody>
           </table>
         </div>
-        <div style="margin-top:2vh;">
+        <div style="margin-top:2vh;display:flex;">
           <div class="delivery-breakdown">
-            <div style="background:white; max-width: 25vw;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
+            <div style="background:white;border: 1px solid #014B96;padding: 1rem;border-radius: 10px;">
               <canvas bind:this={pieCanvas} style="height:15vh;"></canvas>
             </div>
           </div>
@@ -637,7 +695,7 @@ function randomData(length, max = 100) {
       </div>
       <div class="middle-dashboard">
         <div class="middle-header">
-          <div style="display:flex;flex-direction:row;margin-left:auto">
+          <!-- <div style="display:flex;flex-direction:row;margin-left:auto">
             <div> 
               <img
               src="{base}/svg/arrow-left-3-svgrepo-com.svg"
@@ -652,7 +710,7 @@ function randomData(length, max = 100) {
               class="graph-scroll-btn-right"
               id="graph-scroll-btn-right"  />
           </div>
-          </div>
+          </div> -->
         </div>
         <div class="prevented-cross-drops">
           <a href="#">cross-drops prevented</a>
@@ -665,13 +723,11 @@ function randomData(length, max = 100) {
 
         </div>
         <div class="google-maps-usage">
-          <div>
+          <div class="map-input-div">
             <input class="trailer-input" placeholder="Enter Trailer ID" bind:value={trailerIDinput}/>
-          </div>
-          <div>
             <input class="site-input" placeholder="Enter Site ID" bind:value="{siteIDinput}"/>
           </div>
-          <div>
+          <div class="explore-div">
             <button class="explore-btn" type="button" on:click={handleMapCoords}>EXPLORE </button>
           </div>
           <div class="map" id="map">
@@ -702,22 +758,31 @@ function randomData(length, max = 100) {
         </div>
         <div class="overview-graph">
           <swiper-container class="my-swiper" init="false" autoplay-delay="8000" loop="true">
+            <!-- <swiper-container class="my-swiper" pagination="true"> -->
             <swiper-slide>
-              <div style="height:100%">
-                <div style="background-color:#dfefe9;height:50%;align-items:center;display:flex;justify-content:center" >
+              <div style="height:100%;">
+                <div style="background-color:#dfefe9;height:50%;align-items:center;display:flex;justify-content:center;border-radius:10px" >
                   <span style="font-size:4rem;font-weight: 400;color: #014b96;">92% </span> <span style="height:4vh;background-color:green;border-radius:50%;margin-left: 2vw;font-size:2rem;font-weight: 400;color: white;line-height: 4.25vh;width:2.75vw"> &#10003;</span>
                 </div>
                 <div style="display:flex;flex-direction:column">
-                  <span style="font-size:1.5rem;font-weight: 400;color: #014b96;">Fleet Confidence</span>
-                   Score based on valve health, fuel verification accuracy, and black box sync rate.
+                  <span style="font-size:1.5rem;font-weight: 400;color: #014b96;">System Health</span>
+                   Score based on midas battery, fuel verification, RFID mismatch, and black box sync rate.
                 </div>
               </div>
             </swiper-slide>
             <swiper-slide>
-              <div style="background:white;height:90%; max-width: 25vw;padding: 1rem;justify-content:center;display:flex;">
+              <div style="background:white;height:90%; max-width: 25vw;padding: 1rem;justify-content:center;display:flex;border-radius:10px">
                 <canvas bind:this={lineCanvas} ></canvas>
               </div> 
             </swiper-slide>
+            <swiper-slide>
+          <div class="midas-alerts">
+            <div> <b style="color:orange;font-size:1.65rem;margin-right:0.5vw;"> &#9888; </b>   Valve sync failures  <span> 1 </span> </div> 
+            <div> <b style="color:red;font-size:1.65rem;margin-right:0.5vw"> &#9747; </b> RFID not read <span> 6 </span> </div>
+            <div> <b style="color:red;font-size:1.65rem;margin-right:0.5vw"> &#9747; </b> Fuel mismatch attempted <span> 1 </span> </div>
+            <div> <b style="color:orange;font-size:1.65rem;margin-right:0.5vw"> &#9888; </b> Long dwell time detected <span> 2 </span> </div>
+          </div>
+            </swiper-slide> 
           </swiper-container>
        
         </div>
@@ -786,6 +851,7 @@ function randomData(length, max = 100) {
 <style>
   * {
     box-sizing: border-box;
+    
   }
   main {
     flex: 1;
@@ -807,17 +873,24 @@ function randomData(length, max = 100) {
     display: none;
   }
   .dashboard-container {
-    display:flex;
-    justify-content: space-between;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:5vw;
     height:100vh;
     padding: 5vh 5vw 5vh 5vw;
     width:100vw;
-    background: linear-gradient(to right, #001338 0%, #014B96 50%);
+    background: radial-gradient(#001338 20%, #014B96 100%);
   }
   .table-container {
     height:40vh;
     overflow-y: scroll;
-    border:none;
+    overflow-x:hidden;
+    border-radius:10px;
+    width:25vw;
+  }
+  .table-container table {
+    width:25vw;
+
   }
   .live-indicator {
     width: 12px;
@@ -830,25 +903,22 @@ function randomData(length, max = 100) {
   .live-table span {
     font-family: "Mulish", sans-serif;
     font-size: 1.1rem;
-    font-weight: 400;
-    color: white;
-    margin-left: 1vw;
+    font-weight: 600;
+    line-height: 1rem;
   }
 
   .live-table table {
-    border: 1px solid grey;
-    border-radius: 8px;
     border-spacing: 0; 
   }
   .live-table td {
     padding: 1rem;
   }
-  .live-table tr:nth-child(even) {
+  /* .live-table tr:nth-child(even) {
     background-color:#f4f5f7;
   }
   .live-table tr:nth-child(odd) {
     background-color:white;
-  }
+  } */
   .current-time {
     font-family: "Mulish", sans-serif;
     font-size: 1.5rem;
@@ -902,15 +972,23 @@ function randomData(length, max = 100) {
   }
   .google-maps-usage {
     display:grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(3,0.5fr);
-    height:15vh;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr 13fr;
   }
   .map {
-    grid-column: 2 ;
-    grid-row: 1 / span 3 ;
+    grid-row: 3 ;
     border:solid 4px white;
     border-radius: 8px;
+  }
+  .explore-div {
+    margin-top:1vh;
+    margin-bottom:0.4vh;
+    display:grid;
+    justify-content: center;
+  }
+  .map-input-div {
+    display:flex;
+    justify-content: space-between;
   }
   .sug-box {
     position:absolute;
@@ -1084,12 +1162,10 @@ function randomData(length, max = 100) {
     z-index: 20;
   }
   .sub-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     background-color: #f5f5f5;
-    gap: 1vw;
-    padding-left: 2.5vw;
     padding-top: 2vh;
-    justify-content: space-between;
     align-items: center;
   }
   .sub-header div {
@@ -1115,7 +1191,6 @@ function randomData(length, max = 100) {
     justify-content: space-between;
     align-items: center;
     padding: 0 2vw;
-    margin-bottom: 5vh;
     height:100vh;
   }
   .menu-container div {
@@ -1203,7 +1278,7 @@ function randomData(length, max = 100) {
     display: none;
     position: absolute;
     top: 100%;
-    left: 2vw;
+    left: 5vw;
     background-color: #014b96;
     border: 1px solid #ccc;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -1236,6 +1311,7 @@ function randomData(length, max = 100) {
     cursor: pointer;
     display: flex;
     gap: 1vw;
+    margin-left:5vw;
   }
   .profile-column,
   .company-column {
@@ -1282,6 +1358,14 @@ function randomData(length, max = 100) {
   .this-week-container {
     margin-top: 2vh;
   }
+  .midas-alerts {
+    background:white; 
+    padding: 1rem;
+    display:flex;
+    flex-direction: column;
+    gap: 2vh;
+    border-radius:10px;
+  }
   .this-week-div {
     background:white; 
     max-width: 25vw;
@@ -1292,10 +1376,13 @@ function randomData(length, max = 100) {
     flex-direction: column;
     gap: 1.5vh;
   }
+  .midas-alerts div ,
   .this-week-div div {
     display:flex ;
     flex-direction: row;
+    align-items: center;
   }
+  .midas-alerts div > span ,
   .this-week-div div > span {
     margin-left: auto;
     color:#014b96;
@@ -1312,12 +1399,36 @@ function randomData(length, max = 100) {
   swiper-container {
       max-width: 25vw;
       height: 25vh;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-left:0;
     }
+
     swiper-slide {
       text-align: center;
       font-size: 18px;
       background: white;
-
+      border-radius:10px;
+      overflow:hidden;
     }
-
+    .delivery-breakdown {
+      width:25vw;
+    }
+    .details-content {
+      display:grid;
+      grid-template-rows: 1fr 1fr 1fr 1fr;
+      gap:1vh;
+    }
+    .row-even {
+    background-color: #f8f9fa;
+  }
+  .row-odd {
+    background-color: #eaf3fc;
+  }
+  .row-even.details-row {
+    background-color: #f8f9fa;
+  }
+  .row-odd.details-row {
+    background-color: #eaf3fc;
+  }
 </style>
