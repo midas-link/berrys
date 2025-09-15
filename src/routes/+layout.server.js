@@ -55,7 +55,7 @@ export async function load(event) {
     const isAdminPage = currentPathname.startsWith(`${basePath}/admin`);
   
     if (user && (isLoginPage || isRegisterPage)) { 
-        const redirectTo = user.isAdmin ? `${basePath}/admin/` : `${basePath}/home/`;
+        const redirectTo = user.isAdmin > 0 ? `${basePath}/admin/` : `${basePath}/home/`;
         throw redirect(302, redirectTo);
     }
     
@@ -64,6 +64,6 @@ export async function load(event) {
     }
     
     return {
-        user: user ? { userId: user.userId, email: user.email, isAdmin: user.isAdmin, firstName: user.firstName, lastName: user.lastName, companyImage: user.companyImage , phoneNumber: user.phoneNumber , title:user.title, businessUnit : user.businessUnit } : null
+        user: user ? { userId: user.userId,companyName: user.companyName, email: user.email, isAdmin: user.isAdmin, firstName: user.firstName, lastName: user.lastName, companyImage: user.companyImage , phoneNumber: user.phoneNumber , title:user.title, businessUnit : user.businessUnit } : null
     };
 }
