@@ -6,6 +6,7 @@
   import { PUBLIC_G_MAP_KEY } from '$env/static/public';
   import { register } from 'swiper/element/bundle';
   import Chart from "chart.js/auto";
+  import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { formatDate } from "$lib/scripts/vehicle-logging";
   export let data ; 
   let lineCanvas,lineInstance,pieCanvas,pieInstance;
@@ -241,32 +242,8 @@ async function fetchEventsData() {
       });
     }
   }
-  async function handleSearch(searchText) {
-    try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchText)}`, {
-        credentials: 'include'
-      });
-      if(response.ok) {
-        searchResults = await response.json();
-      } else {
-        const errorData = await response.json();
-        searchError = errorData;
-        searchResults = [];
-      }
-    } catch(err) {
-      searchError = 'A network error occurred.';
-      searchResults = [];
-    } finally {
-      console.log("Search results are:", searchResults);
-    }
-  }
-  function handleSearchbar(event) {
-    input = event.target.value; 
-    showSuggestions = input.length > 0; 
-    if(input.length > 2) {
-      console.log("searched input is: ",input)
-      handleSearch(input);
-    }
+  async function handleSearch() {
+    goto(`${base}/search?q=${input}`);
   }
   function handleTouchStart(event) {
     if (window.innerWidth > 1000) return;
@@ -446,18 +423,22 @@ function randomData(length, max = 100) {
       mainSwipeContainer.addEventListener("touchend", handleTouchEnd);
     }
     pieInstance = new Chart(pieCanvas, {
+      plugins: [ChartDataLabels],
       type: "pie",
       data: {
         labels: ["Diesel #2", "Gas 91 No Eth", "Gas 87 No Eth", "Gas 93 OCTANE"],
         datasets: [
           {
             label: "",
+            datalabels: {
+        color: '#000000'
+      },
             data: randomData(4),
             backgroundColor: [
-              "rgba(255, 99, 132, 0.7)",
-              "rgba(255, 205, 86, 0.7)",
-              "rgba(54, 162, 235, 0.7)",
-              "rgba(75, 192, 192, 0.7)"
+              "rgba(0, 114, 188, 1)",
+              "rgba(153, 153, 153, 1)",
+              "rgba(255, 161, 64, 1)",
+              "rgba(50, 193, 137, 1)"
             ]
           }
         ]
@@ -465,6 +446,12 @@ function randomData(length, max = 100) {
       options: {
         responsive: true,
         plugins: {
+          datalabels: {
+            font: {
+              size:15,
+              weight: 700,
+            }
+          },
           legend: { display: true },
           title: { display: true, text: "Delivery Breakdown",font: {
             size:25
@@ -553,7 +540,9 @@ function randomData(length, max = 100) {
       <a href="{base}/inventory">Inventory</a>
       <a href="{base}/analytics">Analytics</a>
       <div class="search-box">
-        <input type="text" bind:value={input} on:input={handleSearchbar} placeholder="Search..." /> 
+        <form on:submit|preventDefault={() => {handleSearch()}}>
+        <input type="text" bind:value={input} placeholder="Search..." /> 
+        </form>
         <!-- <div class="sug-box" class:active={showSuggestions}>
           {#if searchResults}
           {#each searchResults as row}
@@ -623,67 +612,69 @@ function randomData(length, max = 100) {
   <div>
     <section class="dashboard-container">
       <div class="live-table">
-        <div>
+        <div class="live-indicator-div">
         <span for="live-table">LIVE</span>
         <span class="live-indicator"></span>
         </div>
-        <div class='table-container' id="scrollable-table-container">
-          <table>
-            <tbody>
-              {#if eventsLoading}
-              <tr>
-                <td colspan="5" style="text-align: center; padding: 20px;"
-                >Loading events...</td>
-              </tr>
-              {:else if eventsError}
-              <tr>
-                <td colspan="5"style="text-align: center; padding: 20px; color: red;">{eventsError}</td>
-              </tr>
-              {:else if allEvents.length > 0}
-               {#each allEvents as row, index}
-              <tr class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" on:click={() => toggleDetails(index)}>
-                <td>{formatEpochToTime(row["Delivery End"])}</td>
-                <td>{row.SiteCode}</td>
-                <td>T{row.tank_number}</td>
-                <td style="text-align:center">{row.Delivered}</td>
-              </tr>
-              {#if detailsVisible[index]}
-              <tr class="details-row {getRowClass(index)} on:click={() => toggleDetails(index)}">
-                <td colspan="4">
-              <div class="details-content">
-                <div class="detail-row">
-                  {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(
-                    row["Delivery Start"]
-                  ) || ""} to {formatEpochToTime(row["Delivery End"]) || ""}
+        <div class="table-clip">
+          <div class='table-container' id="scrollable-table-container">
+            <table>
+              <tbody>
+                {#if eventsLoading}
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 20px;"
+                  >Loading events...</td>
+                </tr>
+                {:else if eventsError}
+                <tr>
+                  <td colspan="5"style="text-align: center; padding: 20px; color: red;">{eventsError}</td>
+                </tr>
+                {:else if allEvents.length > 0}
+                 {#each allEvents as row, index}
+                <tr class="main-row {getRowClass(index)} {detailsVisible[index] ? 'hover-row' : ''}" on:click={() => toggleDetails(index)}>
+                  <td>{formatEpochToTime(row["Delivery End"])}</td>
+                  <td>{row.SiteCode}</td>
+                  <td>T{row.tank_number}</td>
+                  <td style="text-align:center">{row.Delivered}</td>
+                </tr>
+                {#if detailsVisible[index]}
+                <tr class="details-row {getRowClass(index)} on:click={() => toggleDetails(index)}">
+                  <td colspan="4">
+                <div class="details-content">
+                  <div class="detail-row">
+                    {formatDate(formatEpochToDisplay(row.event_timestamp))} | {formatEpochToTime(
+                      row["Delivery Start"]
+                    ) || ""} to {formatEpochToTime(row["Delivery End"]) || ""}
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Site Code:</span>
+                    {row.SiteCode} | <span class="label">Business Unit:</span>
+                    {row.BusinessUnitName || ""}
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Full Address:</span>
+                    {row.Address || ""}, {row.City || ""}
+                    {row.State || ""} | {row.Zip || ""}
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Fuel Dropped:</span>
+                    {row.Delivered} | <span class="label">Tank:</span>
+                    T{row.tank_number}
+                  </div>
                 </div>
-                <div class="detail-row">
-                  <span class="label">Site Code:</span>
-                  {row.SiteCode} | <span class="label">Business Unit:</span>
-                  {row.BusinessUnitName || ""}
-                </div>
-                <div class="detail-row">
-                  <span class="label">Full Address:</span>
-                  {row.Address || ""}, {row.City || ""}
-                  {row.State || ""} | {row.Zip || ""}
-                </div>
-                <div class="detail-row">
-                  <span class="label">Fuel Dropped:</span>
-                  {row.Delivered} | <span class="label">Tank:</span>
-                  T{row.tank_number}
-                </div>
-              </div>
-            </td>
-            </tr>
-              {/if}
-              {/each}
-              {:else}
-              <tr>
-                <td colspan="4" style="text-align: center; padding: 20px;"
-                  >No results found</td>
+              </td>
               </tr>
-              {/if}
-            </tbody>
-          </table>
+                {/if}
+                {/each}
+                {:else}
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 20px;"
+                    >No results found</td>
+                </tr>
+                {/if}
+              </tbody>
+            </table>
+          </div>
         </div>
         <div style="margin-top:2vh;display:flex;">
           <div class="delivery-breakdown">
@@ -713,14 +704,12 @@ function randomData(length, max = 100) {
           </div> -->
         </div>
         <div class="prevented-cross-drops">
-          <a href="#">cross-drops prevented</a>
-          <span>6 <span style="color:gold;margin-left:1vw;padding-bottom:2vh;font-size:3.5rem">&#8593;</span></span>
+          <a href={base}/cross-drops>cross-drops prevented</a>
+          <span>6 <span style="color:gold;padding-bottom:2vh;font-size:3.5rem">&#8593;</span></span>
         </div>
         <div class="active-trailers">
-          <a href="">active trailers</a>
-          <span>672<span style="color:gold;margin-left:1vw;padding-bottom:2vh;font-size:3.5rem">&#8593;</span> </span>
-          
-
+          <a href={base}/site-data>active trailers</a>
+          <span>672<span style="color:gold;padding-bottom:2vh;font-size:3.5rem">&#8593;</span> </span>
         </div>
         <div class="google-maps-usage">
           <div class="map-input-div">
@@ -850,8 +839,7 @@ function randomData(length, max = 100) {
 
 <style>
   * {
-    box-sizing: border-box;
-    
+    box-sizing: border-box; 
   }
   main {
     flex: 1;
@@ -879,18 +867,26 @@ function randomData(length, max = 100) {
     height:100vh;
     padding: 5vh 5vw 5vh 5vw;
     width:100vw;
-    background: radial-gradient(#001338 20%, #014B96 100%);
+    background: radial-gradient(#001338 10%, #014B96 75%);
+  }
+  .table-clip {
+    border-radius:10px;
+    overflow:hidden;
+    width:25vw;
   }
   .table-container {
     height:40vh;
     overflow-y: scroll;
     overflow-x:hidden;
-    border-radius:10px;
-    width:25vw;
+    width:100%;
+    scrollbar-width: none;           
   }
   .table-container table {
-    width:25vw;
-
+    width:100%;
+    border-collapse: separate; 
+    border-spacing: 0;         
+    border-radius:10px;       
+    overflow:hidden;            
   }
   .live-indicator {
     width: 12px;
@@ -899,14 +895,33 @@ function randomData(length, max = 100) {
     border-radius: 2px;
     display: inline-block;
     margin-left:0.5vw;
+    align-self:center;
   }
-  .live-table span {
+  .live-indicator-div span {
+    font-family: "Mulish", sans-serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    line-height: 1rem;
+    color:white;
+  }
+  .details-row span {
     font-family: "Mulish", sans-serif;
     font-size: 1.1rem;
     font-weight: 600;
     line-height: 1rem;
+    color:black;
   }
-
+  .live-table {
+    position: relative;
+  }
+  .live-indicator-div {
+    position: absolute;
+    top:0%;
+    width: 100%;
+  }
+  .table-clip {
+    margin-top:2vh;
+  }
   .live-table table {
     border-spacing: 0; 
   }
@@ -973,7 +988,7 @@ function randomData(length, max = 100) {
   .google-maps-usage {
     display:grid;
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr 13fr;
+    grid-template-rows: 1fr 1fr 50vh;
   }
   .map {
     grid-row: 3 ;
@@ -990,7 +1005,7 @@ function randomData(length, max = 100) {
     display:flex;
     justify-content: space-between;
   }
-  .sug-box {
+  /* .sug-box {
     position:absolute;
     top: calc(100% + 6px);
     left:0;
@@ -1017,7 +1032,7 @@ function randomData(length, max = 100) {
   }
   .sug-box.active li{
     display:block;
-  }
+  } */
   .trailer-input,
   .site-input {
     background-color: #eaf3fc;
@@ -1027,6 +1042,7 @@ function randomData(length, max = 100) {
     font-weight: 400;
     border:none;
     border-radius: 4px;
+    text-align:center;
   }
   .trailer-input::placeholder,
   .site-input::placeholder{
