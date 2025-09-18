@@ -64,6 +64,6 @@ export async function load(event) {
     }
     
     return {
-        user: user ? { userId: user.userId,companyName: user.companyName, email: user.email, isAdmin: user.isAdmin, firstName: user.firstName, lastName: user.lastName, companyImage: user.companyImage , phoneNumber: user.phoneNumber , title:user.title, businessUnit : user.businessUnit } : null
+        user: user ? { userId: user.userId,companyName: user.companyName, email: user.email, isAdmin: user.isAdmin, firstName: user.firstName, lastName: user.lastName, companyImage: user.companyImage , phoneNumber: user.phoneNumber , title:user.title, businessUnit : user.businessUnit, emailAlert: user.emailAlert, webAlert:user.webAlert } : null
     };
 }
