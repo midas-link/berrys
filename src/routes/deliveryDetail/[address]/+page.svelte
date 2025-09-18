@@ -375,7 +375,7 @@
       <table class="desktop-view">
         <thead>
           <tr>
-            <th></th>
+            <th>Compartment</th>
             <th>Time(duration)</th>
             <th>Tank</th>
             <th>Tank Grade</th>
