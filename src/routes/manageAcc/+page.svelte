@@ -9,6 +9,11 @@
   let changePasswordError = false;
   let newPassword = "";
   let confirmPassword ="";
+  let selectedOption;
+  let webAlert = data.user.webAlert || false;
+  let emailAlert = data.user.emailAlert || false;
+  let changePreferenceError = false;
+  let changePreferenceMessage = "";
   function handleActiveForm(activeForm) {
     if(activeForm === ".pass-div") {
       document.getElementById('pass-div').style.display = "block";
@@ -16,6 +21,40 @@
     } else if(activeForm === ".pref-div") {
       document.getElementById('pref-div').style.display = "block";
       document.getElementById('pass-div').style.display = "none";
+    }
+  }
+  async function handleChangePreference() {
+    try {
+      const response = await fetch(`/api/changeAlertPreference`, { 
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          userId: userId,
+          webAlert: webAlert,
+          emailAlert: emailAlert
+        })
+      });
+      const data = await response.json();
+      if(response.ok) {
+        changePreferenceError = false;
+        changePreferenceMessage = data.message || "Preference changed successfully";
+      }
+      else {
+        if(response.status === 400 && Array.isArray(data.error)) changePreferenceMessage = data.error.map(err=>err.msg).join(' & ');
+        else if( typeof data.error === 'string') {
+          changePreferenceMessage = data.error;
+        }
+        else {
+          changePreferenceMessage = `An unexpected error has occured. Status: ${response.status}`;
+        }
+        changePreferenceError = true;
+      }
+    } catch(err) {
+      console.error('Client-side error:',err);
+      changePreferenceError = true;
     }
   }
   async function handlePasswordChange() {
@@ -52,7 +91,6 @@
       }
     } catch(err) {
       console.error('Client-side error:', err);
-      console.log("BUH");
       changePasswordError = true;
     }
     currentPassword = "";
@@ -213,13 +251,16 @@
       </div>
       <div id="pref-div" style="display:none;">
         <form on:submit|preventDefault={handleChangePreference}>
+          {#if changePreferenceMessage}
+          <p style="color: {changePreferenceError ? 'red' : 'green'};">{changePreferenceMessage}</p>
+          {/if}
           <div class="form-row">
-            <label for="change-sms">Receive alerts via SMS:</label>
-            <input type="checkbox" id="change-sms" name="change-sms" required />
+            <label for="change-web">Receive alerts in Web:</label>
+            <input type="checkbox" id="change-web" name="change-web" bind:checked={webAlert}   />
           </div>
           <div class="form-row">
             <label for="change-email">Receive alerts via Email:</label>
-            <input type="checkbox" id="change-email" name="change-email" required />
+            <input type="checkbox" id="change-email" name="change-email" bind:checked={emailAlert}  />
           </div>
           <button type="submit">Submit</button>
 
